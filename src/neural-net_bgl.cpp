@@ -12,6 +12,11 @@
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/graph/graphviz.hpp>
 #include <boost/graph/topological_sort.hpp>
+#include <boost/graph/adj_list_serialize.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <iostream>
+#include <fstream>
+
 #include <boost/container/detail/iterator.hpp>
 #include <boost/container/detail/iterators.hpp>
 
@@ -124,22 +129,20 @@ struct NeuronP {
    int tag;
    double m_input_value;
    double m_outputVal;
-   unsigned m_myIndex;
-	double m_gradient;
-	NeuronP& operator=(NeuronP other)
-	{
-		tag = other.tag;
-	}
-	
-    NeuronP& operator=(int other)
-	{
-		tag = other;
-	}
+   double m_gradient;
+   template<class Archive>
+   void serialize(Archive & ar, const unsigned int file_version){
+	   ar << tag << m_outputVal;
+   }
 };
 
 
 struct SinapsP {
    double m_weight;
+      template<class Archive>
+   void serialize(Archive & ar, const unsigned int file_version){
+	   ar << m_weight;
+   }
 };
 
 
@@ -332,6 +335,10 @@ Net::Net(const vector<unsigned> &topology)
     cout << "A topological ordering: ";
     for (int i = 0; i < topo_sorted.size(); i++) cout << m_net_graph[topo_sorted[i]].tag  << " ";
     cout << endl;
+    
+    std::ofstream file{"NN_graph_archive.txt"};
+    boost::archive::text_oarchive oa{file};
+    oa << m_net_graph;
 
 
 }

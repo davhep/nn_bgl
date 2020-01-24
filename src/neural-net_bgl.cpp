@@ -31,7 +31,7 @@ public:
 		return m_trainingDataFile.eof();
 	}
 	void getTopology(vector<unsigned> &topology);
-
+	
 	// Returns the number of input values read from the file:
 	unsigned getNextInputs(vector<double> &inputVals);
 	unsigned getTargetOutputs(vector<double> &targetOutputVals);
@@ -148,6 +148,8 @@ typedef boost::adjacency_list<boost::vecS,
         boost::vecS, boost::bidirectionalS,
         NeuronP, SinapsP> Graph;
         
+typedef boost::graph_traits<Graph>::vertex_descriptor vertex_descriptor;
+        
 class Net
 {
 public:
@@ -163,13 +165,11 @@ public:
     double alpha = 0.5; // momentum, multiplier of last deltaWeight, [0.0..n]
 
 	Graph m_net_graph;
-	std::deque<boost::graph_traits<Graph>::vertex_descriptor> topo_sorted;
+	std::deque<vertex_descriptor> topo_sorted;
 	double m_error;
 	double m_recentAverageError;
 	static double m_recentAverageSmoothingFactor;
-	std::vector<unsigned> output_neurons;
-
-
+	std::map<vertex_descriptor, int> input_layer, output_layer;
 };
 
 double Net::transferFunction(double x)
@@ -205,22 +205,25 @@ double Net::m_recentAverageSmoothingFactor = 100.0; // Number of training sample
 void Net::getResults(vector<double> &resultVals) const
 {
 	resultVals.clear();
-	for(unsigned n = 0; n < output_neurons.size(); ++n) resultVals.push_back(m_net_graph[output_neurons[n]].m_outputVal);
+	for(auto output_layer_element: output_layer)
+		resultVals.push_back(m_net_graph[output_layer_element.first].m_outputVal);
 }
 
 void Net::backProp(const std::vector<double> &targetVals)
 {
+	assert(targetVals.size() == output_layer.size());
 	
 	// Calculate overal net error (RMS of output neuron errors)
 
 	m_error = 0.0;
 
-	for(unsigned n = 0; n < output_neurons.size(); ++n)
+	for(auto output_layer_element: output_layer)
 	{
-		double delta = targetVals[n] - m_net_graph[output_neurons[n]].m_outputVal;
+		double delta = targetVals[ output_layer_element.second ] - m_net_graph[output_layer_element.first].m_outputVal;
 		m_error += delta *delta;
 	}
-	m_error /= output_neurons.size(); // get average error squared
+	
+	m_error /= output_layer.size(); // get average error squared
 	m_error = sqrt(m_error); // RMS
 
 	// Implement a recent average measurement:
@@ -234,10 +237,10 @@ void Net::backProp(const std::vector<double> &targetVals)
 		auto neuron = &m_net_graph[topo_sorted[i]];
 		if (debug_low) cout << "Update gradients on outputs for neuron " << neuron->tag << endl;
 		double delta = 0;
-	    if((topo_sorted.size() - neuron->tag) <= output_neurons.size()){
+	    if(output_layer.find(topo_sorted[i]) != output_layer.end()){
 			//ok, we are in last layer of neurons - desired outputs are fixed from output values
-			delta = targetVals[topo_sorted.size() - neuron->tag-1] - neuron->m_outputVal;
-			if (debug_low) cout << "Out neuron, so update on delta_out targetVals[topo_sorted.size() - neuron->tag -1] =	" << targetVals[topo_sorted.size() - neuron->tag -1]  << "	neuron->m_outputVal = " << neuron->m_outputVal << "delta= " << delta << endl;			
+			delta = targetVals[output_layer.find(topo_sorted[i])->second] - neuron->m_outputVal;
+			if (debug_low) cout << "Out neuron, so update on delta_out targetVals[output_layer.find(topo_sorted[i])] =	" << targetVals[output_layer.find(topo_sorted[i])->second]  << "	neuron->m_outputVal = " << neuron->m_outputVal << "delta= " << delta << endl;			
 		}
 		else
 		{
@@ -251,8 +254,10 @@ void Net::backProp(const std::vector<double> &targetVals)
 			}
 		}
 		neuron->m_gradient = delta * transferFunctionDerivative(neuron->m_outputVal);
-		if (debug_low) cout << "neuron->tag=	" << neuron->tag  << "	neuron->m_gradient= " << neuron->m_gradient << endl;
+		if (debug_low) cout << "neuron->m_outputVal=	" << neuron->m_outputVal << endl;
 		if (debug_low) cout << "delta=	" << delta  << "	transferFunctionDerivative(neuron->m_outputVal)= " << transferFunctionDerivative(neuron->m_outputVal) << endl;
+		if (debug_low) cout << "neuron->tag=	" << neuron->tag  << "	neuron->m_gradient= " << neuron->m_gradient << endl;
+		
    }
    
    for (int i = topo_sorted.size() - 1; i >= 0; i--){
@@ -273,11 +278,12 @@ void Net::backProp(const std::vector<double> &targetVals)
 
 void Net::feedForward(const vector<double> &inputVals)
 {
+	assert(input_layer.size() == inputVals.size());
+	
 	for (int i = 0; i < topo_sorted.size(); i++){
 		auto neuron = &m_net_graph[topo_sorted[i]];
-	    if(neuron->tag < inputVals.size()){
-			//ok, we are in first layer of neurons - outputs are fixed from input values
-			neuron->m_outputVal = inputVals[neuron->tag];
+		if(input_layer.find(topo_sorted[i]) != input_layer.end()){ 	//ok, we are in first layer of neurons - outputs are fixed from input values
+			neuron->m_outputVal = inputVals[input_layer.find(topo_sorted[i])->second];
 		}
 		else
 		{
@@ -295,7 +301,8 @@ void Net::feedForward(const vector<double> &inputVals)
 
 Net::Net(const vector<unsigned> &topology)
 {
-	
+	input_layer.clear();
+	output_layer.clear();
 	
 	unsigned numLayers = topology.size();
 	unsigned neurons_total = 0;
@@ -305,11 +312,14 @@ Net::Net(const vector<unsigned> &topology)
 		for(unsigned neuronNum = 0; neuronNum < topology[layerNum]; ++neuronNum){
 			NeuronP neuron;
 			neuron.tag = neurons_total;
-			boost::add_vertex(neuron, m_net_graph);
-			if(layerNum == numLayers - 1) output_neurons.push_back(neuron.tag);//if we are in output layer, storage ouput tags
+			auto vertex_new = boost::add_vertex(neuron, m_net_graph);
+			if(layerNum == 0) //if we are in input layer, storage ouput tags
+				input_layer.insert(std::pair<vertex_descriptor, int>(vertex_new, neuronNum));
+			if(layerNum == numLayers - 1) //if we are in output layer, storage ouput tags
+				output_layer.insert(std::pair<vertex_descriptor, int>(vertex_new, neuronNum));
 			for(unsigned neuronNum_prev = 0; neuronNum_prev < numInputs; neuronNum_prev++){
 				SinapsP sinaps;
-				sinaps.m_weight = double(rand()) / double(RAND_MAX);
+				sinaps.m_weight = double((neuronNum_prev+neuronNum) % 10)/10;
 				boost::add_edge(first_prev_neuron+neuronNum_prev, neurons_total, sinaps, m_net_graph);
 			 }
 			 neurons_total++;
@@ -345,7 +355,7 @@ int main()
 	vector<double> inputVals, targetVals, resultVals;
 	
 	int trainingPass = 0;
-	int epochs_max=10000;
+	int epochs_max=100;
 	std::vector<Net> net_dump;
 	while(trainingPass < epochs_max){
 		++trainingPass;
@@ -373,15 +383,7 @@ int main()
 	
 			myNet.backProp(targetVals);
 	
-			if(epochs_max == 1 && false) //last epoch, lets dump it
-			{
-				showVectorVals("Dump inputs :", inputVals);
-				showVectorVals("Dump outputs:", resultVals);
-				showVectorVals("Dump targets:", targetVals);
-				myNet.dump("Net_dump: ");
-				net_dump.push_back(myNet);
-				cout << endl;
-			}
+
 		}
 	    trainData.reset();
 	    cerr << "At epoch " << trainingPass << " Net recent average error: " << myNet.getRecentAverageError() << endl;

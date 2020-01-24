@@ -281,15 +281,17 @@ void Net::feedForward(const vector<double> &inputVals)
 	assert(input_layer.size() == inputVals.size());
 	
 	for (int i = 0; i < topo_sorted.size(); i++){
-		auto neuron = &m_net_graph[topo_sorted[i]];
-		if(input_layer.find(topo_sorted[i]) != input_layer.end()){ 	//ok, we are in first layer of neurons - outputs are fixed from input values
-			neuron->m_outputVal = inputVals[input_layer.find(topo_sorted[i])->second];
+		auto vertex = topo_sorted[i];
+		auto neuron = &m_net_graph[vertex];
+		auto input_layer_position = input_layer.find(vertex);
+		if(input_layer_position != input_layer.end()){ 	//ok, we are in first layer of neurons - outputs are fixed from input values
+			neuron->m_outputVal = inputVals[input_layer_position->second];
 		}
 		else
 		{
 			neuron->m_input_value = 0;
 		    typename boost::graph_traits<Graph>::in_edge_iterator ei, ei_end;
-		    for (boost::tie(ei, ei_end) = in_edges(topo_sorted[i], m_net_graph); ei != ei_end; ++ei) {
+		    for (boost::tie(ei, ei_end) = in_edges(vertex, m_net_graph); ei != ei_end; ++ei) {
 				auto source = boost::source ( *ei, m_net_graph);
 				auto target = boost::target ( *ei, m_net_graph );
 				neuron->m_input_value += m_net_graph[*ei].m_weight * m_net_graph[source].m_outputVal;

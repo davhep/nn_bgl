@@ -14,6 +14,8 @@
 #include <boost/graph/topological_sort.hpp>
 #include <boost/graph/adj_list_serialize.hpp>
 #include <boost/archive/text_oarchive.hpp>
+#include <boost/serialization/deque.hpp>
+
 #include <iostream>
 #include <fstream>
 
@@ -139,7 +141,7 @@ struct NeuronP {
 
 struct SinapsP {
    double m_weight;
-      template<class Archive>
+   template<class Archive>
    void serialize(Archive & ar, const unsigned int file_version){
 	   ar << m_weight;
    }
@@ -170,9 +172,14 @@ public:
 	Graph m_net_graph;
 	std::deque<vertex_descriptor> topo_sorted;
 	double m_error;
-	double m_recentAverageError;
+	double m_recentAverageError = 0;
 	static double m_recentAverageSmoothingFactor;
 	std::map<vertex_descriptor, int> input_layer, output_layer;
+	void save(const char *path);
+	template<class Archive>
+	void serialize(Archive & ar, const unsigned int file_version){
+	   ar << topo_sorted;
+    }
 };
 
 double Net::transferFunction(double x)
@@ -224,6 +231,7 @@ void Net::backProp(const std::vector<double> &targetVals)
 	{
 		double delta = targetVals[ output_layer_element.second ] - m_net_graph[output_layer_element.first].m_outputVal;
 		m_error += delta *delta;
+		if(debug_low) cout << "targetVals[ output_layer_element.second ] = " << targetVals[ output_layer_element.second ] << "	m_net_graph[output_layer_element.first].m_outputVal= " << m_net_graph[output_layer_element.first].m_outputVal << endl;
 	}
 	
 	m_error /= output_layer.size(); // get average error squared
@@ -234,7 +242,10 @@ void Net::backProp(const std::vector<double> &targetVals)
 	m_recentAverageError = 
 			(m_recentAverageError * m_recentAverageSmoothingFactor + m_error)
 			/ (m_recentAverageSmoothingFactor + 1.0);
-   
+    if(debug_low){
+		cout << "m_recentAverageError =  (m_recentAverageError * m_recentAverageSmoothingFactor + m_error) / (m_recentAverageSmoothingFactor + 1.0);" << endl;
+		cout << m_recentAverageError << "	" << m_recentAverageError << "	" << m_recentAverageSmoothingFactor << "	" << m_error << "	" << m_recentAverageSmoothingFactor << endl;
+	}
    	for (int i = topo_sorted.size() - 1; i >= 0; i--){
 		//reverse topological order
 		auto neuron = &m_net_graph[topo_sorted[i]];
@@ -286,9 +297,11 @@ void Net::feedForward(const vector<double> &inputVals)
 	for (int i = 0; i < topo_sorted.size(); i++){
 		auto vertex = topo_sorted[i];
 		auto neuron = &m_net_graph[vertex];
+		if(debug_low) cout << "Processing neuron " << neuron->tag << endl;
 		auto input_layer_position = input_layer.find(vertex);
 		if(input_layer_position != input_layer.end()){ 	//ok, we are in first layer of neurons - outputs are fixed from input values
 			neuron->m_outputVal = inputVals[input_layer_position->second];
+			if(debug_low) cout << "inputVals[input_layer_position->second]= " << inputVals[input_layer_position->second] << endl;
 		}
 		else
 		{
@@ -298,9 +311,11 @@ void Net::feedForward(const vector<double> &inputVals)
 				auto source = boost::source ( *ei, m_net_graph);
 				auto target = boost::target ( *ei, m_net_graph );
 				neuron->m_input_value += m_net_graph[*ei].m_weight * m_net_graph[source].m_outputVal;
+				if(debug_low) cout << "m_net_graph[*ei].m_weight = " << m_net_graph[*ei].m_weight << " m_net_graph[source].m_outputVal= " <<  m_net_graph[source].m_outputVal << " neuron->m_input_value= " << neuron->m_input_value << endl;
 				}
 			neuron->m_outputVal = transferFunction(neuron->m_input_value);
 		}
+		if(debug_low) cout << "neuron->m_outputVal = " << neuron->m_outputVal << endl;
    }
 }
 
@@ -335,12 +350,12 @@ Net::Net(const vector<unsigned> &topology)
     cout << "A topological ordering: ";
     for (int i = 0; i < topo_sorted.size(); i++) cout << m_net_graph[topo_sorted[i]].tag  << " ";
     cout << endl;
-    
-    std::ofstream file{"NN_graph_archive.txt"};
+}
+
+void Net::save(const char *path){
+	std::ofstream file{path};
     boost::archive::text_oarchive oa{file};
-    oa << m_net_graph;
-
-
+    oa << this;
 }
 
 
@@ -364,7 +379,7 @@ int main()
 	vector<double> inputVals, targetVals, resultVals;
 	
 	int trainingPass = 0;
-	int epochs_max=100;
+	int epochs_max=1;
 	std::vector<Net> net_dump;
 	while(trainingPass < epochs_max){
 		++trainingPass;

@@ -14,8 +14,9 @@
 #include <boost/graph/topological_sort.hpp>
 #include <boost/graph/adj_list_serialize.hpp>
 #include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
 #include <boost/serialization/deque.hpp>
-
+#include <boost/serialization/map.hpp>
 #include <iostream>
 #include <fstream>
 
@@ -134,7 +135,10 @@ struct NeuronP {
    double m_gradient;
    template<class Archive>
    void serialize(Archive & ar, const unsigned int file_version){
-	   ar << tag << m_outputVal;
+	   ar & tag;
+	   ar & m_input_value;
+	   ar & m_outputVal;
+	   ar & m_gradient;
    }
 };
 
@@ -143,7 +147,7 @@ struct SinapsP {
    double m_weight;
    template<class Archive>
    void serialize(Archive & ar, const unsigned int file_version){
-	   ar << m_weight;
+	   ar & m_weight;
    }
 };
 
@@ -175,11 +179,12 @@ public:
 	double m_recentAverageError = 0;
 	static double m_recentAverageSmoothingFactor;
 	std::map<vertex_descriptor, int> input_layer, output_layer;
+	
 	void save(const char *path);
+	void load(const char *path);
+	
 	template<class Archive>
-	void serialize(Archive & ar, const unsigned int file_version){
-	   ar << topo_sorted;
-    }
+		void serialize(Archive & ar, const unsigned int file_version);
 };
 
 double Net::transferFunction(double x)
@@ -354,10 +359,48 @@ Net::Net(const vector<unsigned> &topology)
 
 void Net::save(const char *path){
 	std::ofstream file{path};
-    boost::archive::text_oarchive oa{file};
-    oa << this;
+	if(file){
+		boost::archive::text_oarchive oa{file};
+		oa << *this;
+	}
 }
 
+void Net::load(const char *path){
+	std::ifstream file{path};
+	if(file){
+		cout << "Loading Net ..." << endl;
+		if(debug_low){
+			cout << "topo size before: " << topo_sorted.size()
+				<< "	edges size before: " << boost::num_edges(m_net_graph)
+				<< "	vertexes size before: " << boost::num_vertices(m_net_graph) << endl;
+		}
+	    try{
+			boost::archive::text_iarchive ia{file};
+			m_net_graph.clear();//because of deserialization add new vertices and edges, w/o removing old ones
+			ia >> *this;
+		}
+		catch(int a)
+		{
+		  cout << "Loading faild. Caught exception number:  " << a << endl;
+		  return;
+		}
+		
+		if(debug_low){
+			cout << "topo size after: " << topo_sorted.size()
+				<< "	edges size after: " << boost::num_edges(m_net_graph)
+				<< "	vertexes size after: " << boost::num_vertices(m_net_graph) << endl;
+		}
+	}
+}
+template<class Archive>
+void Net::serialize(Archive & ar, const unsigned int file_version){
+	   ar & m_net_graph;
+	   ar & eta;
+	   ar & input_layer;
+	   ar & output_layer;
+	   ar & topo_sorted;
+	   //ar & m_recentAverageError;
+}
 
 
 void showVectorVals(string label, vector<double> &v)
@@ -376,11 +419,11 @@ int main()
 	
 	trainData.getTopology(topology);
 	Net myNet(topology);
-	vector<double> inputVals, targetVals, resultVals;
+	myNet.load("trained_model_serialized.txt");
 	
+	vector<double> inputVals, targetVals, resultVals;	
 	int trainingPass = 0;
-	int epochs_max=1;
-	std::vector<Net> net_dump;
+	int epochs_max=100;
 	while(trainingPass < epochs_max){
 		++trainingPass;
 		myNet.eta = 100.0/(trainingPass+1000.0);
@@ -401,22 +444,20 @@ int main()
 				showVectorVals("Inputs :", inputVals);
 				showVectorVals("Outputs:", resultVals);
 				showVectorVals("Targets:", targetVals);
-			}
-	
-			assert(targetVals.size() == topology.back());
-	
-			myNet.backProp(targetVals);
-	
-
+			}	
+			assert(targetVals.size() == topology.back());	
+			myNet.backProp(targetVals);	
 		}
 	    trainData.reset();
 	    cerr << "At epoch " << trainingPass << " Net recent average error: " << myNet.getRecentAverageError() << endl;
     }
     
-    ofstream dot_file("automaton.dot");
+    ofstream dot_file("trained_model_vizualization.dot");
 	boost::dynamic_properties dp;
 	dp.property("node_id", get(&NeuronP::tag, myNet.m_net_graph));
     dp.property("label", get(&NeuronP::tag, myNet.m_net_graph));
     dp.property("label", get(&SinapsP::m_weight, myNet.m_net_graph));
 	boost::write_graphviz_dp(dot_file, myNet.m_net_graph, dp);
+	
+	myNet.save("trained_model_serialized.txt");
 }

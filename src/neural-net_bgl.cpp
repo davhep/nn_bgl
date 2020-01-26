@@ -399,7 +399,7 @@ void Net::serialize(Archive & ar, const unsigned int file_version){
 	   ar & input_layer;
 	   ar & output_layer;
 	   ar & topo_sorted;
-	   //ar & m_recentAverageError;
+	   ar & m_recentAverageError;
 }
 
 

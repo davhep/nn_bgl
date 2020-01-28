@@ -145,6 +145,7 @@ struct NeuronP {
 
 struct SinapsP {
    double m_weight;
+   double m_delta_weight;
    template<class Archive>
    void serialize(Archive & ar, const unsigned int file_version){
 	   ar & m_weight;
@@ -158,6 +159,7 @@ typedef boost::adjacency_list<boost::vecS,
         NeuronP, SinapsP> Graph;
         
 typedef boost::graph_traits<Graph>::vertex_descriptor vertex_descriptor;
+typedef boost::graph_traits<Graph>::edge_descriptor edge_descriptor;
         
 class Net
 {
@@ -286,9 +288,9 @@ void Net::backProp(const std::vector<double> &targetVals)
 		    for (boost::tie(ei, ei_end) = in_edges(topo_sorted[i], m_net_graph); ei != ei_end; ++ei){
 				auto source = boost::source ( *ei, m_net_graph);
 				auto target = boost::target ( *ei, m_net_graph );
-				double delta_weight = eta * m_net_graph[source].m_outputVal * m_net_graph[target].m_gradient;
-				m_net_graph[*ei].m_weight += delta_weight;
-				if (debug_low) cout << "Wij " << m_net_graph[source].tag << "	to " << m_net_graph[target].tag << " updated for " << delta_weight << endl;
+				m_net_graph[*ei].m_delta_weight = eta * m_net_graph[source].m_outputVal * m_net_graph[target].m_gradient;
+				m_net_graph[*ei].m_weight += m_net_graph[*ei].m_delta_weight;
+				if (debug_low) cout << "Wij " << m_net_graph[source].tag << "	to " << m_net_graph[target].tag << " updated for " << m_net_graph[*ei].m_delta_weight << endl;
 			}
 	}
 }
@@ -420,6 +422,7 @@ int main()
 	trainData.getTopology(topology);
 	Net myNet(topology);
 	myNet.load("trained_model_serialized.txt");
+	vector<Net> myNet_dump; //to save model states for different input signals to analyze corellations
 	
 	vector<double> inputVals, targetVals, resultVals;	
 	int trainingPass = 0;
@@ -447,6 +450,7 @@ int main()
 			}	
 			assert(targetVals.size() == topology.back());	
 			myNet.backProp(targetVals);	
+			if(trainingPass == epochs_max) myNet_dump.push_back(myNet);
 		}
 	    trainData.reset();
 	    cerr << "At epoch " << trainingPass << " Net recent average error: " << myNet.getRecentAverageError() << endl;
@@ -460,4 +464,32 @@ int main()
 	boost::write_graphviz_dp(dot_file, myNet.m_net_graph, dp);
 	
 	myNet.save("trained_model_serialized.txt");
+	
+	// Ok, now we start to analyze colleced data from dumped states of neural net
+	
+	// First, let`s analyze edge delta_weights
+	
+	// Here is some magic iterating over edges
+	// I have no simple translation of edge desciptor or edge iterator from myNet to saved dumped_net edge desciptor or edge iterator
+	// If i save edge descriptors to vector in model, iterate over number in vector and pick up descriptor from saved model,
+	// It will fail - saved descriptor is pointed to actual model state of edge, not saved.
+	// I think, the reason is described in official documentaion:
+	// ===cite==
+	// https://www.boost.org/doc/libs/1_61_0/libs/graph/doc/quick_tour.html
+	// An edge descriptor plays the same kind of role as the vertex descriptor object, it is a "black box" provided by the graph type.
+	// ===cite==
+	// I have no idea how to debug problems of copying and derefencing of "black box"
+	// So, we have to choose another way (c) V.I. Lenin
+	// vertices (source and target) are simple numbers, so we go
+	boost::graph_traits<Graph>::edge_iterator ei, ei_end;
+	for (boost::tie(ei, ei_end) = boost::edges(myNet.m_net_graph); ei != ei_end; ++ei){
+			auto source = boost::source ( *ei, myNet.m_net_graph);
+			auto target = boost::target ( *ei, myNet.m_net_graph);
+			cout << source << "	to	" << target << endl;
+			for(auto dumped_net : myNet_dump){
+				std::pair<edge_descriptor,bool> edge_saved = boost::edge(source, target, dumped_net.m_net_graph);
+				assert(edge_saved.second == true); //because we _must_ have edge in saved graph, if one exists in current graph
+				cout << dumped_net.m_net_graph[edge_saved.first].m_delta_weight << endl;
+			}
+	}
 }

@@ -4,9 +4,8 @@ cmake_minimum_required(VERSION 3.10)
 project(neural-net_bgl)
 
 set(CMAKE_CXX_STANDARD_LIBRARIES "-lboost_serialization")
-set(SOURCE nn_bgl.cpp neural-net_bgl.cpp)
-set(HEADER ./nn_bgl.cpp.h)
-
+set(SOURCE nn_bgl.cpp training_data.cpp neural-net_bgl.cpp)
+set(HEADER nn_bgl.h training_data.h)
 
 include_directories(.)
 

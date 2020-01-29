@@ -6,6 +6,8 @@
 #include <fstream>
 #include <sstream>
 #include <map>  
+#include <numeric>
+
 
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
@@ -174,6 +176,7 @@ public:
 	double transferFunctionDerivative(double x);
 	double eta = 0.15; // overall net learning rate
     double alpha = 0.5; // momentum, multiplier of last deltaWeight, [0.0..n]
+    double minimal_error;
 
 	Graph m_net_graph;
 	std::deque<vertex_descriptor> topo_sorted;
@@ -246,9 +249,11 @@ void Net::backProp(const std::vector<double> &targetVals)
 
 	// Implement a recent average measurement:
 
-	m_recentAverageError = 
-			(m_recentAverageError * m_recentAverageSmoothingFactor + m_error)
-			/ (m_recentAverageSmoothingFactor + 1.0);
+	//m_recentAverageError = 
+	//		(m_recentAverageError * m_recentAverageSmoothingFactor + m_error)
+	//		/ (m_recentAverageSmoothingFactor + 1.0);
+	
+	m_recentAverageError = m_error;
     if(debug_low){
 		cout << "m_recentAverageError =  (m_recentAverageError * m_recentAverageSmoothingFactor + m_error) / (m_recentAverageSmoothingFactor + 1.0);" << endl;
 		cout << m_recentAverageError << "	" << m_recentAverageError << "	" << m_recentAverageSmoothingFactor << "	" << m_error << "	" << m_recentAverageSmoothingFactor << endl;
@@ -330,7 +335,7 @@ Net::Net(const vector<unsigned> &topology)
 {
 	input_layer.clear();
 	output_layer.clear();
-	
+	minimal_error = 1e6;
 	unsigned numLayers = topology.size();
 	unsigned neurons_total = 0;
 	for(unsigned layerNum = 0; layerNum < numLayers; ++layerNum){
@@ -426,7 +431,8 @@ int main()
 	
 	vector<double> inputVals, targetVals, resultVals;	
 	int trainingPass = 0;
-	int epochs_max=100;
+	int epochs_max=1000;
+	
 	while(trainingPass < epochs_max){
 		++trainingPass;
 		myNet.eta = 100.0/(trainingPass+1000.0);
@@ -454,8 +460,18 @@ int main()
 		}
 	    trainData.reset();
 	    cerr << "At epoch " << trainingPass << " Net recent average error: " << myNet.getRecentAverageError() << endl;
+	    if(myNet.getRecentAverageError() < myNet.minimal_error){
+			myNet.minimal_error = myNet.getRecentAverageError();
+			myNet.save("trained_model_serialized_with_min_error.txt");
+			ofstream dot_file("trained_model_vizualization_with_min_error.dot");
+			boost::dynamic_properties dp;
+			dp.property("node_id", get(&NeuronP::tag, myNet.m_net_graph));
+		    dp.property("label", get(&NeuronP::tag, myNet.m_net_graph));
+		    dp.property("label", get(&SinapsP::m_weight, myNet.m_net_graph));	
+			boost::write_graphviz_dp(dot_file, myNet.m_net_graph, dp);
+			cout << "minimal error detected, model saved to files" << endl;
+	    }
     }
-    
     ofstream dot_file("trained_model_vizualization.dot");
 	boost::dynamic_properties dp;
 	dp.property("node_id", get(&NeuronP::tag, myNet.m_net_graph));
@@ -481,15 +497,31 @@ int main()
 	// I have no idea how to debug problems of copying and derefencing of "black box"
 	// So, we have to choose another way (c) V.I. Lenin
 	// vertices (source and target) are simple numbers, so we go
+	
+	//std::map<std::pair<int,int>, vector<double>> m_deltas;
 	boost::graph_traits<Graph>::edge_iterator ei, ei_end;
 	for (boost::tie(ei, ei_end) = boost::edges(myNet.m_net_graph); ei != ei_end; ++ei){
 			auto source = boost::source ( *ei, myNet.m_net_graph);
 			auto target = boost::target ( *ei, myNet.m_net_graph);
 			cout << source << "	to	" << target << endl;
+			vector<double> m_deltas, weights;
 			for(auto dumped_net : myNet_dump){
 				std::pair<edge_descriptor,bool> edge_saved = boost::edge(source, target, dumped_net.m_net_graph);
 				assert(edge_saved.second == true); //because we _must_ have edge in saved graph, if one exists in current graph
-				cout << dumped_net.m_net_graph[edge_saved.first].m_delta_weight << endl;
+				//cout << dumped_net.m_net_graph[edge_saved.first].m_delta_weight << endl;
+				weights.push_back(dumped_net.m_net_graph[edge_saved.first].m_weight);
+				m_deltas.push_back(dumped_net.m_net_graph[edge_saved.first].m_delta_weight);
 			}
+							
+			double sum_weights = std::accumulate(weights.begin(), weights.end(), 0.0);
+			double mean_weights = sum_weights / weights.size();
+			
+			double sum_deltaw = std::accumulate(m_deltas.begin(), m_deltas.end(), 0.0);
+			double mean_deltaw = sum_deltaw / m_deltas.size();
+			
+			double sq_sum = std::inner_product(m_deltas.begin(), m_deltas.end(), m_deltas.begin(), 0.0);
+			double stdev = std::sqrt(sq_sum / m_deltas.size() - mean_deltaw * mean_deltaw);
+			cout << "W= " << mean_weights << " d= " << mean_deltaw << "	d_var=	" << stdev << " d_var/W= " << stdev/mean_weights << endl;
+			
 	}
 }

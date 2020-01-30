@@ -53,6 +53,7 @@ struct SinapsP {
    template<class Archive>
    void serialize(Archive & ar, const unsigned int file_version){
 	   ar & m_weight;
+	   ar & m_delta_weight;
    }
 };
 
@@ -70,7 +71,7 @@ class Net
 public:
 	Net(const vector<unsigned> &topology);
 	void feedForward(const vector<double> &inputVals);
-	void backProp(const vector<double> &targetVals);
+	void backProp(const vector<double> &targetVals, bool update_weights = true);
 	void getResults(vector<double> &resultVals) const;
 	double getRecentAverageError(void) const { return m_recentAverageError;}
 	void dump(std::string label);
@@ -78,6 +79,7 @@ public:
 	double transferFunctionDerivative(double x);
 	double eta = 0.15; // overall net learning rate
     double alpha = 0.5; // momentum, multiplier of last deltaWeight, [0.0..n]
+    unsigned int trainingPass = 0;
     double minimal_error;
 
 	Graph m_net_graph;

@@ -46,22 +46,25 @@ int main()
 	trainData.getTopology(topology);
 	
 	Net myNet(topology);
-	myNet.load("final_result.txt");
+	myNet.load("final_result_serialized.txt");
+	cout << "myNet.minimal_error = " << myNet.minimal_error << endl;
 	vector<Net> myNet_dump; //to save model states for different input signals to analyze corellations
 	
 	vector<double> inputVals, targetVals, resultVals;	
 	int trainingPass = 0;
 	int epochs_max=1000;
 	
-	while(trainingPass < epochs_max){
+	while(trainingPass <= epochs_max){
 		++trainingPass;
-		myNet.eta = 100.0/(trainingPass+1000.0);
+		myNet.eta = 100.0/(myNet.trainingPass+1000.0);
+		
+		double epoch_error = 0;
+		double epoch_average_error = 0;
+		unsigned int epoch_num_in = 0;
 		while(!trainData.isEof()){
 			// Get new input data and feed it forward:
-			if(trainData.getNextInputs(inputVals) != topology[0])
-				break;
-			myNet.feedForward(inputVals);
-	
+			assert(trainData.getNextInputs(inputVals) == topology[0]);
+			myNet.feedForward(inputVals);	
 			// Collect the net's actual results:
 			myNet.getResults(resultVals);
 			// Train the net what the outputs should have been:
@@ -74,16 +77,20 @@ int main()
 				showVectorVals("Targets:", targetVals);
 			}	
 			assert(targetVals.size() == topology.back());	
-			myNet.backProp(targetVals);	
-			if(trainingPass == epochs_max) myNet_dump.push_back(myNet);
+			myNet.backProp(targetVals, !(trainingPass == epochs_max)); //if last ecphc, do not update weight, just calculate error	
+			if(trainingPass == epochs_max) myNet_dump.push_back(myNet);			
+			epoch_num_in++;
+			epoch_error += myNet.getRecentAverageError();
 		}
-	    trainData.reset();
-	    cerr << "At epoch " << trainingPass << " Net recent average error: " << myNet.getRecentAverageError() << endl;
-	    if(myNet.getRecentAverageError() < myNet.minimal_error){
-			myNet.minimal_error = myNet.getRecentAverageError();
+		epoch_average_error = epoch_error/epoch_num_in;
+
+	    cerr << "At epoch " << trainingPass << " Net recent average error: " << epoch_average_error << endl;
+	    if(epoch_average_error < myNet.minimal_error){
+			myNet.minimal_error = epoch_average_error;
 			saveModel(myNet, "best_result");
 			cout << "minimal error detected, model saved to files" << endl;
 	    }
+	    trainData.reset();
     }
-    saveModel(myNet, "final_result");	
+	saveModel(myNet, "final_result");	
 }

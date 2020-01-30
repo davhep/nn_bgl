@@ -41,7 +41,7 @@ void Net::getResults(vector<double> &resultVals) const
 		resultVals.push_back(m_net_graph[output_layer_element.first].m_outputVal);
 }
 
-void Net::backProp(const std::vector<double> &targetVals)
+void Net::backProp(const std::vector<double> &targetVals, bool update_weights)
 {
 	assert(targetVals.size() == output_layer.size());
 	
@@ -66,50 +66,53 @@ void Net::backProp(const std::vector<double> &targetVals)
 	//		/ (m_recentAverageSmoothingFactor + 1.0);
 	
 	m_recentAverageError = m_error;
-    if(debug_low){
-		cout << "m_recentAverageError =  (m_recentAverageError * m_recentAverageSmoothingFactor + m_error) / (m_recentAverageSmoothingFactor + 1.0);" << endl;
-		cout << m_recentAverageError << "	" << m_recentAverageError << "	" << m_recentAverageSmoothingFactor << "	" << m_error << "	" << m_recentAverageSmoothingFactor << endl;
-	}
-   	for (int i = topo_sorted.size() - 1; i >= 0; i--){
-		//reverse topological order
-		auto neuron = &m_net_graph[topo_sorted[i]];
-		if (debug_low) cout << "Update gradients on outputs for neuron " << neuron->tag << endl;
-		double delta = 0;
-	    if(output_layer.find(topo_sorted[i]) != output_layer.end()){
-			//ok, we are in last layer of neurons - desired outputs are fixed from output values
-			delta = targetVals[output_layer.find(topo_sorted[i])->second] - neuron->m_outputVal;
-			if (debug_low) cout << "Out neuron, so update on delta_out targetVals[output_layer.find(topo_sorted[i])] =	" << targetVals[output_layer.find(topo_sorted[i])->second]  << "	neuron->m_outputVal = " << neuron->m_outputVal << "delta= " << delta << endl;			
+	
+	    if(debug_low){
+			cout << "m_recentAverageError =  (m_recentAverageError * m_recentAverageSmoothingFactor + m_error) / (m_recentAverageSmoothingFactor + 1.0);" << endl;
+			cout << m_recentAverageError << "	" << m_recentAverageError << "	" << m_recentAverageSmoothingFactor << "	" << m_error << "	" << m_recentAverageSmoothingFactor << endl;
 		}
-		else
-		{
-			typename boost::graph_traits<Graph>::out_edge_iterator ei, ei_end;
-			if (debug_low) cout << "Update hidden layer neuron" << endl;
-		    for (boost::tie(ei, ei_end) = out_edges(topo_sorted[i], m_net_graph); ei != ei_end; ++ei){
-				auto source = boost::source ( *ei, m_net_graph);
-				auto target = boost::target ( *ei, m_net_graph );
-				delta += m_net_graph[*ei].m_weight * m_net_graph[target].m_gradient;
-				if (debug_low) cout << "target neuron " << m_net_graph[target].tag << " sm_net_graph[*ei].m_weight =	" << m_net_graph[*ei].m_weight  << "	m_net_graph[target].m_gradient = " << m_net_graph[target].m_gradient << endl;
+	   	for (int i = topo_sorted.size() - 1; i >= 0; i--){
+			//reverse topological order
+			auto neuron = &m_net_graph[topo_sorted[i]];
+			if (debug_low) cout << "Update gradients on outputs for neuron " << neuron->tag << endl;
+			double delta = 0;
+		    
+		    if(output_layer.find(topo_sorted[i]) != output_layer.end()){
+				//ok, we are in last layer of neurons - desired outputs are fixed from output values
+				delta = targetVals[output_layer.find(topo_sorted[i])->second] - neuron->m_outputVal;
+				if (debug_low) cout << "Out neuron, so update on delta_out targetVals[output_layer.find(topo_sorted[i])] =	" << targetVals[output_layer.find(topo_sorted[i])->second]  << "	neuron->m_outputVal = " << neuron->m_outputVal << "delta= " << delta << endl;			
 			}
-		}
-		neuron->m_gradient = delta * transferFunctionDerivative(neuron->m_outputVal);
-		if (debug_low) cout << "neuron->m_outputVal=	" << neuron->m_outputVal << endl;
-		if (debug_low) cout << "delta=	" << delta  << "	transferFunctionDerivative(neuron->m_outputVal)= " << transferFunctionDerivative(neuron->m_outputVal) << endl;
-		if (debug_low) cout << "neuron->tag=	" << neuron->tag  << "	neuron->m_gradient= " << neuron->m_gradient << endl;
-		
-   }
+			else
+			{
+				typename boost::graph_traits<Graph>::out_edge_iterator ei, ei_end;
+				if (debug_low) cout << "Update hidden layer neuron" << endl;
+			    for (boost::tie(ei, ei_end) = out_edges(topo_sorted[i], m_net_graph); ei != ei_end; ++ei){
+					auto source = boost::source ( *ei, m_net_graph);
+					auto target = boost::target ( *ei, m_net_graph );
+					delta += m_net_graph[*ei].m_weight * m_net_graph[target].m_gradient;
+					if (debug_low) cout << "target neuron " << m_net_graph[target].tag << " sm_net_graph[*ei].m_weight =	" << m_net_graph[*ei].m_weight  << "	m_net_graph[target].m_gradient = " << m_net_graph[target].m_gradient << endl;
+				}
+			}
+			
+			neuron->m_gradient = delta * transferFunctionDerivative(neuron->m_outputVal);
+			if (debug_low) cout << "neuron->m_outputVal=	" << neuron->m_outputVal << endl;
+			if (debug_low) cout << "delta=	" << delta  << "	transferFunctionDerivative(neuron->m_outputVal)= " << transferFunctionDerivative(neuron->m_outputVal) << endl;
+			if (debug_low) cout << "neuron->tag=	" << neuron->tag  << "	neuron->m_gradient= " << neuron->m_gradient << endl;			
+	     }
    
-   for (int i = topo_sorted.size() - 1; i >= 0; i--){
-		//reverse topological order
-		auto neuron = &m_net_graph[topo_sorted[i]];
-		typename boost::graph_traits<Graph>::in_edge_iterator ei, ei_end;
+   
+	     for (int i = topo_sorted.size() - 1; i >= 0; i--){
+			//reverse topological order
+			auto neuron = &m_net_graph[topo_sorted[i]];
+			typename boost::graph_traits<Graph>::in_edge_iterator ei, ei_end;
 		    for (boost::tie(ei, ei_end) = in_edges(topo_sorted[i], m_net_graph); ei != ei_end; ++ei){
 				auto source = boost::source ( *ei, m_net_graph);
 				auto target = boost::target ( *ei, m_net_graph );
 				m_net_graph[*ei].m_delta_weight = eta * m_net_graph[source].m_outputVal * m_net_graph[target].m_gradient;
-				m_net_graph[*ei].m_weight += m_net_graph[*ei].m_delta_weight;
+				if (update_weights) m_net_graph[*ei].m_weight += m_net_graph[*ei].m_delta_weight;
 				if (debug_low) cout << "Wij " << m_net_graph[source].tag << "	to " << m_net_graph[target].tag << " updated for " << m_net_graph[*ei].m_delta_weight << endl;
 			}
-	}
+		}		 
 }
 
 
@@ -219,4 +222,5 @@ void Net::serialize(Archive & ar, const unsigned int file_version){
 	   ar & output_layer;
 	   ar & topo_sorted;
 	   ar & m_recentAverageError;
+	   ar & minimal_error;
 }

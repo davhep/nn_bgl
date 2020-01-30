@@ -176,7 +176,7 @@ Net::Net(const vector<unsigned> &topology)
     cout << endl;
 }
 
-void Net::save(const char *path){
+void Net::save( std::string path){
 	std::ofstream file{path};
 	if(file){
 		boost::archive::text_oarchive oa{file};
@@ -184,7 +184,7 @@ void Net::save(const char *path){
 	}
 }
 
-void Net::load(const char *path){
+void Net::load( std::string path){
 	std::ifstream file{path};
 	if(file){
 		cout << "Loading Net ..." << endl;

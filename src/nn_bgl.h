@@ -87,8 +87,8 @@ public:
 	static double m_recentAverageSmoothingFactor;
 	std::map<vertex_descriptor, int> input_layer, output_layer;
 	
-	void save(const char *path);
-	void load(const char *path);
+	void save(const std::string path);
+	void load(const std::string path);
 	
 	template<class Archive>
 		void serialize(Archive & ar, const unsigned int file_version);

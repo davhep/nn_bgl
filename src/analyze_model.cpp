@@ -29,9 +29,9 @@ void showVectorVals(string label, vector<double> &v)
 	cout << endl;
 }
 
-void dumpVectorVals(string label, ofstream data_dump, vector<double> &v)
+void dumpVectorVals(string label, ofstream &data_dump, vector<double> &v)
 {
-	cout << label << " ";
+	data_dump << label << " ";
 	for(unsigned i = 0; i < v.size(); ++i)
 	{
 		data_dump << v[i] << " ";
@@ -57,7 +57,6 @@ int main()
 	for (boost::tie(ei, ei_end) = boost::edges(myNet.m_net_graph); ei != ei_end; ++ei){
 			auto source = boost::source ( *ei, myNet.m_net_graph);
 			auto target = boost::target ( *ei, myNet.m_net_graph);
-			cout << source << "	to	" << target << endl;
 			vector<double> m_deltas, weights;
 			while(!trainData.isEof()){
 				// Get new input data and feed it forward:
@@ -83,8 +82,9 @@ int main()
 				weights.push_back(myNet.m_net_graph[edge_saved.first].m_weight);
 				m_deltas.push_back(myNet.m_net_graph[edge_saved.first].m_delta_weight);
 			}
-			showVectorVals( "Weights", weights);
-			showVectorVals("m_deltas", m_deltas);
+			trainData.reset();
+			//showVectorVals( "Weights", weights);
+			//showVectorVals("m_deltas", m_deltas);
 							
 			double sum_weights = std::accumulate(weights.begin(), weights.end(), 0.0);
 			double mean_weights = sum_weights / weights.size();
@@ -94,6 +94,6 @@ int main()
 			
 			double sq_sum = std::inner_product(m_deltas.begin(), m_deltas.end(), m_deltas.begin(), 0.0);
 			double stdev = std::sqrt(sq_sum / m_deltas.size() - mean_deltaw * mean_deltaw);
-			cout << "W= " << mean_weights << " d= " << mean_deltaw << "	d_var=	" << stdev << " d_var/W= " << stdev/mean_weights << endl;
+			cout << source << " to " << target << " W= " << mean_weights << " d= " << mean_deltaw << "	d_var=	" << stdev << " d_var/W= " << stdev/mean_weights << endl;
 	}
 }

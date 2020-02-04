@@ -68,6 +68,7 @@ int main()
 	FILE *gp = popen("gnuplot -persist","w"); // gp - дескриптор канала
 	//to dynamically plot and update 3D graph
 	//fprintf(gp, "plot sin(x)\n");
+	fprintf(gp, "set zrange [-0.2:1.0]\n");
 	fprintf(gp, "splot 'model_vs_practice_dynamic.txt' u 2:3:5, 'model_vs_practice_dynamic.txt' u 2:3:7\n");
 	fflush(gp);
 	

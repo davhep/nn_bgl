@@ -53,13 +53,15 @@ int main()
 	int epochs_max=1000;
 	
 	ofstream data_dump("model_vs_practice.txt");
+	// for gnuplotting by 
+	// splot 'model_vs_practice.txt' u 2:3:7, 'model_vs_practice.txt' u 2:3:7
 	boost::graph_traits<Graph>::edge_iterator ei, ei_end;
-	std::map<std::pair<int,int>,vector<double>>	m_deltas, weights;		
+	std::map<std::pair<int,int>,vector<double>>	m_deltas, weights;
 	while(!trainData.isEof()){
 		// Get new input data and feed it forward:
 		assert(trainData.getNextInputs(inputVals) == topology[0]);
 		myNet.feedForward(inputVals);
-		dumpVectorVals("inputVals", data_dump, inputVals);
+		
 		// Collect the net's actual results:
 		myNet.getResults(resultVals);
 		// Train the net what the outputs should have been:
@@ -73,6 +75,11 @@ int main()
 		}	
 		assert(targetVals.size() == topology.back());	
 		myNet.backProp(targetVals, false); // don not upgrade weigths to avoid model change while analyze
+
+		dumpVectorVals("inputVals	", data_dump, inputVals);
+		dumpVectorVals("resultVals	", data_dump, resultVals);
+		dumpVectorVals("targetVals	", data_dump, targetVals);
+		data_dump << endl;
 		
 		for (boost::tie(ei, ei_end) = boost::edges(myNet.m_net_graph); ei != ei_end; ++ei){
 				auto source = boost::source ( *ei, myNet.m_net_graph);

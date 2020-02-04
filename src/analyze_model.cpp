@@ -54,7 +54,7 @@ int main()
 	
 	ofstream data_dump("model_vs_practice.txt");
 	// for gnuplotting by 
-	// splot 'model_vs_practice.txt' u 2:3:7, 'model_vs_practice.txt' u 2:3:7
+	// splot 'model_vs_practice.txt' u 2:3:5, 'model_vs_practice.txt' u 2:3:7
 	boost::graph_traits<Graph>::edge_iterator ei, ei_end;
 	std::map<std::pair<int,int>,vector<double>>	m_deltas, weights;
 	while(!trainData.isEof()){

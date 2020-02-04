@@ -39,6 +39,15 @@ void saveModel(Net myNet, std::string basic_name){
 	boost::write_graphviz_dp(dot_file, myNet.m_net_graph, dp);
 } 
 
+void dumpVectorVals(string label, ofstream &data_dump, vector<double> &v)
+{
+	data_dump << label << " ";
+	for(unsigned i = 0; i < v.size(); ++i)
+	{
+		data_dump << v[i] << " ";
+	}
+}
+
 int main()
 {
 	TrainingData trainData("trainingData.txt");
@@ -54,6 +63,14 @@ int main()
 	int trainingPass = 0;
 	int epochs_max=1000;
 	
+
+	
+	FILE *gp = popen("gnuplot -persist","w"); // gp - дескриптор канала
+	//to dynamically plot and update 3D graph
+	//fprintf(gp, "plot sin(x)\n");
+	fprintf(gp, "splot 'model_vs_practice_dynamic.txt' u 2:3:5, 'model_vs_practice_dynamic.txt' u 2:3:7\n");
+	fflush(gp);
+	
 	while(trainingPass <= epochs_max){
 		++trainingPass;
 		myNet.eta = 100.0/(myNet.trainingPass+1000.0);
@@ -61,6 +78,11 @@ int main()
 		double epoch_error = 0;
 		double epoch_average_error = 0;
 		unsigned int epoch_num_in = 0;
+		remove("model_vs_practice_dynamic.txt");
+		ofstream data_dump("model_vs_practice_dynamic.txt");
+	    // for gnuplotting by 
+	    // splot 'model_vs_practice.txt' u 2:3:7, 'model_vs_practice.txt' u 2:3:7
+	
 		while(!trainData.isEof()){
 			// Get new input data and feed it forward:
 			assert(trainData.getNextInputs(inputVals) == topology[0]);
@@ -81,7 +103,16 @@ int main()
 			if(trainingPass == epochs_max) myNet_dump.push_back(myNet);			
 			epoch_num_in++;
 			epoch_error += myNet.getRecentAverageError();
+			
+			dumpVectorVals("inputVals	", data_dump, inputVals);
+			dumpVectorVals("resultVals	", data_dump, resultVals);
+			dumpVectorVals("targetVals	", data_dump, targetVals);
+			data_dump << endl;
 		}
+		fprintf(gp, "reread\n");
+		fprintf(gp, "replot\n");
+		fflush(gp);
+		
 		epoch_average_error = epoch_error/epoch_num_in;
 
 	    cerr << "At epoch " << trainingPass << " Net recent average error: " << epoch_average_error << endl;

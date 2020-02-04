@@ -1,3 +1,8 @@
-1. Find and digitize motivated theory
-2. Visualize (2D surface animation) fitting progress
-3. boost options
+2DO:
+* Find and digitize motivated theory
+* boost options
+* Control groupe checking (train vs control estimations)
+
+DONE:
+
+* Visualize (2D surface animation) fitting progress

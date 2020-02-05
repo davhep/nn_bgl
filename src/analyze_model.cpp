@@ -15,6 +15,7 @@
 
 #include <./nn_bgl.h>
 #include <./training_data.h>
+#include <boost/program_options.hpp>
 
 #define debug_high false
 #define debug_low false
@@ -38,14 +39,34 @@ void dumpVectorVals(string label, ofstream &data_dump, vector<double> &v)
 	}
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+	std::string input_file = "final_result_serialized.txt";
+	
+	boost::program_options::options_description desc("Allowed options");
+	desc.add_options()
+	// First parameter describes option name/short name
+	// The second is parameter to option
+	// The third is description
+	("help,h", "print usage message")
+	("input_file,if", boost::program_options::value(&input_file), "pathname for pre-trained filed to load and analyze")
+	;
+	
+	boost::program_options::variables_map vm;
+    boost::program_options::store(parse_command_line(argc, argv, desc), vm);
+    
+    if (vm.count("help")) {  
+		std::cout << desc << "\n";
+		return 0;
+	}
+	if(vm.count("input_file")) input_file = vm["input_file"].as<std::string>();
+	
 	TrainingData trainData("trainingData.txt");
 	vector<unsigned> topology;	
 	trainData.getTopology(topology);
 	
 	Net myNet(topology);
-	myNet.load("final_result_serialized.txt");
+	myNet.load(input_file);
 	cout << "myNet.minimal_error = " << myNet.minimal_error << endl;
 	
 	vector<double> inputVals, targetVals, resultVals;	

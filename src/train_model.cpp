@@ -31,9 +31,9 @@ void showVectorVals(string label, vector<double> &v)
 	cout << endl;
 }
 
-void saveModel(Net myNet, std::string basic_name){
-	myNet.save(basic_name+"_serialized.txt");
-	ofstream dot_file(basic_name+".dot");
+void saveModel(Net myNet, std::string serialized_file,  std::string dot_file_name){
+	myNet.save(serialized_file);
+	ofstream dot_file(dot_file_name);
 	boost::dynamic_properties dp;
 	dp.property("node_id", get(&NeuronP::tag, myNet.m_net_graph));
 	dp.property("label", get(&NeuronP::tag, myNet.m_net_graph));
@@ -53,7 +53,8 @@ void dumpVectorVals(string label, ofstream &data_dump, vector<double> &v)
 int main(int argc, char* argv[])
 {
 	std::string input_file = "final_result_serialized.txt";
-	std::string final_result_file_prefix = "final_result";
+	std::string final_result_serialized = "final_result_serialized.txt";
+	std::string final_result_dot = "final_result.dot";
 	bool use_gnuplot = false;
 	boost::program_options::options_description desc("Allowed options");
 	desc.add_options()
@@ -61,17 +62,24 @@ int main(int argc, char* argv[])
 	// The second is parameter to option
 	// The third is description
 	("help,h", "print usage message")
-	("input_file,if", boost::program_options::value(&input_file), "pathname prefix for final result")
-	("output_final,of", boost::program_options::value(&final_result_file_prefix), "pathname prefix for final result")
+	("input_file,if", boost::program_options::value(&input_file), "pathname for pre-trained filed to load and continue")
+	("output_final_serialized,ofs", boost::program_options::value(&final_result_serialized), "pathname for final serialized result ")
+	("output_final_dot,ofd", boost::program_options::value(&final_result_dot), "pathname prefix for final dot result")
 	("gnuplot,gp",  boost::program_options::bool_switch(&use_gnuplot), "use gnuplot dynamical plotting")
 	;
     
     boost::program_options::variables_map vm;
     boost::program_options::store(parse_command_line(argc, argv, desc), vm);
     
+    
+	if (vm.count("help")) {  
+		std::cout << desc << "\n";
+		return 0;
+	}
     if(vm.count("gnuplot")) use_gnuplot = vm["gnuplot"].as<bool>();  
     if(vm.count("input_file")) input_file = vm["input_file"].as<std::string>();
-    if(vm.count("output_final")) final_result_file_prefix = vm["output_final"].as<std::string>();
+    if(vm.count("output_final_serialized")) final_result_serialized = vm["output_final_serialized"].as<std::string>();
+    if(vm.count("output_final_dot")) final_result_dot = vm["output_final_dot"].as<std::string>();
     
 	TrainingData trainData("trainingData.txt");
 	vector<unsigned> topology;	
@@ -148,10 +156,10 @@ int main(int argc, char* argv[])
 	    cerr << "At epoch " << trainingPass << " Net recent average error: " << epoch_average_error << endl;
 	    if(epoch_average_error < myNet.minimal_error){
 			myNet.minimal_error = epoch_average_error;
-			saveModel(myNet, "best_result");
+			saveModel(myNet, "best_result_serialized.txt",  "best_result.dot");
 			cout << "minimal error detected, model saved to files" << endl;
 	    }
 	    trainData.reset();
     }
-	saveModel(myNet, final_result_file_prefix);	
+	saveModel(myNet, final_result_serialized, final_result_dot);	
 }

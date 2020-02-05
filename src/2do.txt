@@ -2,6 +2,7 @@
 * Find and digitize motivated theory
 * boost options
 * Control groupe checking (train vs control estimations)
+* Continous variant of optimization - math.ph like )))
 
 DONE:
 

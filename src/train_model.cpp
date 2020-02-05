@@ -16,6 +16,8 @@
 #include <./nn_bgl.h>
 #include <./training_data.h>
 
+#include <boost/program_options.hpp>
+
 #define debug_high false
 #define debug_low false
 
@@ -48,30 +50,51 @@ void dumpVectorVals(string label, ofstream &data_dump, vector<double> &v)
 	}
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+	std::string input_file = "final_result_serialized.txt";
+	std::string final_result_file_prefix = "final_result";
+	bool use_gnuplot = false;
+	boost::program_options::options_description desc("Allowed options");
+	desc.add_options()
+	// First parameter describes option name/short name
+	// The second is parameter to option
+	// The third is description
+	("help,h", "print usage message")
+	("input_file,if", boost::program_options::value(&input_file), "pathname prefix for final result")
+	("output_final,of", boost::program_options::value(&final_result_file_prefix), "pathname prefix for final result")
+	("gnuplot,gp",  boost::program_options::bool_switch(&use_gnuplot), "use gnuplot dynamical plotting")
+	;
+    
+    boost::program_options::variables_map vm;
+    boost::program_options::store(parse_command_line(argc, argv, desc), vm);
+    
+    if(vm.count("gnuplot")) use_gnuplot = vm["gnuplot"].as<bool>();  
+    if(vm.count("input_file")) input_file = vm["input_file"].as<std::string>();
+    if(vm.count("output_final")) final_result_file_prefix = vm["output_final"].as<std::string>();
+    
 	TrainingData trainData("trainingData.txt");
 	vector<unsigned> topology;	
 	trainData.getTopology(topology);
 	
 	Net myNet(topology);
-	myNet.load("final_result_serialized.txt");
+	myNet.load(input_file);
 	cout << "myNet.minimal_error = " << myNet.minimal_error << endl;
 	vector<Net> myNet_dump; //to save model states for different input signals to analyze corellations
 	
 	vector<double> inputVals, targetVals, resultVals;	
 	int trainingPass = 0;
-	int epochs_max=1000;
+	int epochs_max = 2;
 	
-
-	
-	FILE *gp = popen("gnuplot -persist","w"); // gp - дескриптор канала
-	//to dynamically plot and update 3D graph
-	//fprintf(gp, "plot sin(x)\n");
-	fprintf(gp, "set zrange [-0.2:1.0]\n");
-	fprintf(gp, "splot 'model_vs_practice_dynamic.txt' u 2:3:5, 'model_vs_practice_dynamic.txt' u 2:3:7\n");
-	fflush(gp);
-	
+	FILE *gp;
+	if(use_gnuplot){
+		gp = popen("gnuplot -persist","w"); // gp - дескриптор канала
+		//to dynamically plot and update 3D graph
+		//fprintf(gp, "plot sin(x)\n");
+		fprintf(gp, "set zrange [-0.2:1.0]\n");
+		fprintf(gp, "splot 'model_vs_practice_dynamic.txt' u 2:3:5, 'model_vs_practice_dynamic.txt' u 2:3:7\n");
+		fflush(gp);
+	}
 	while(trainingPass <= epochs_max){
 		++trainingPass;
 		myNet.eta = 100.0/(myNet.trainingPass+1000.0);
@@ -79,8 +102,11 @@ int main()
 		double epoch_error = 0;
 		double epoch_average_error = 0;
 		unsigned int epoch_num_in = 0;
-		remove("model_vs_practice_dynamic.txt");
-		ofstream data_dump("model_vs_practice_dynamic.txt");
+		ofstream data_dump;
+		if(use_gnuplot){
+			remove("model_vs_practice_dynamic.txt");
+			data_dump.open("model_vs_practice_dynamic.txt");
+		}
 	    // for gnuplotting by 
 	    // splot 'model_vs_practice.txt' u 2:3:7, 'model_vs_practice.txt' u 2:3:7
 	
@@ -104,15 +130,18 @@ int main()
 			if(trainingPass == epochs_max) myNet_dump.push_back(myNet);			
 			epoch_num_in++;
 			epoch_error += myNet.getRecentAverageError();
-			
-			dumpVectorVals("inputVals	", data_dump, inputVals);
-			dumpVectorVals("resultVals	", data_dump, resultVals);
-			dumpVectorVals("targetVals	", data_dump, targetVals);
-			data_dump << endl;
+			if(use_gnuplot){
+				dumpVectorVals("inputVals	", data_dump, inputVals);
+				dumpVectorVals("resultVals	", data_dump, resultVals);
+				dumpVectorVals("targetVals	", data_dump, targetVals);
+				data_dump << endl;
+		    }
 		}
-		fprintf(gp, "reread\n");
-		fprintf(gp, "replot\n");
-		fflush(gp);
+		if(use_gnuplot){
+			fprintf(gp, "reread\n");
+			fprintf(gp, "replot\n");
+			fflush(gp);
+		}
 		
 		epoch_average_error = epoch_error/epoch_num_in;
 
@@ -124,5 +153,5 @@ int main()
 	    }
 	    trainData.reset();
     }
-	saveModel(myNet, "final_result");	
+	saveModel(myNet, final_result_file_prefix);	
 }

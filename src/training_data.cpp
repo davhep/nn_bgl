@@ -6,16 +6,17 @@ void TrainingData::reset(void)
 {
 	m_trainingDataFile.clear();
 	m_trainingDataFile.seekg (0);
-	string line;
-	getline(m_trainingDataFile, line);
 }
 
-void TrainingData::getTopology(vector<unsigned> &topology)
+void TrainingData::getTopology(std::string topology_file_name, vector<unsigned> &topology)
 {
 	string line;
 	string label;
-
-	getline(m_trainingDataFile, line);
+	
+	ifstream topology_file(topology_file_name);
+	getline(topology_file, line);
+	topology_file.close();
+	
 	stringstream ss(line);
 	ss >> label;
 	if(this->isEof() || label.compare("topology:") != 0)

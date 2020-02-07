@@ -55,6 +55,7 @@ int main(int argc, char* argv[])
 	std::string input_file = "final_result_serialized.txt";
 	std::string final_result_serialized = "final_result_serialized.txt";
 	std::string final_result_dot = "final_result.dot";
+	std::string topology_file_name = "topology.txt";
 	bool use_gnuplot = false;
 	boost::program_options::options_description desc("Allowed options");
 	desc.add_options()
@@ -81,9 +82,9 @@ int main(int argc, char* argv[])
     if(vm.count("output_final_serialized")) final_result_serialized = vm["output_final_serialized"].as<std::string>();
     if(vm.count("output_final_dot")) final_result_dot = vm["output_final_dot"].as<std::string>();
     
-	TrainingData trainData("trainingData.txt");
+	TrainingData trainData("train_data.txt");
 	vector<unsigned> topology;	
-	trainData.getTopology(topology);
+	trainData.getTopology(topology_file_name, topology);
 	
 	Net myNet(topology);
 	myNet.load(input_file);
@@ -92,7 +93,7 @@ int main(int argc, char* argv[])
 	
 	vector<double> inputVals, targetVals, resultVals;	
 	int trainingPass = 0;
-	int epochs_max = 2;
+	int epochs_max = 100;
 	
 	FILE *gp;
 	if(use_gnuplot){
@@ -120,7 +121,8 @@ int main(int argc, char* argv[])
 	
 		while(!trainData.isEof()){
 			// Get new input data and feed it forward:
-			assert(trainData.getNextInputs(inputVals) == topology[0]);
+			trainData.getNextInputs(inputVals);
+			if(inputVals.size() != topology[0]) continue;
 			myNet.feedForward(inputVals);	
 			// Collect the net's actual results:
 			myNet.getResults(resultVals);

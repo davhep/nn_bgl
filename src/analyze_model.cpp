@@ -42,6 +42,7 @@ void dumpVectorVals(string label, ofstream &data_dump, vector<double> &v)
 int main(int argc, char* argv[])
 {
 	std::string input_file = "final_result_serialized.txt";
+	std::string topology_file_name = "topology.txt";
 	
 	boost::program_options::options_description desc("Allowed options");
 	desc.add_options()
@@ -61,9 +62,9 @@ int main(int argc, char* argv[])
 	}
 	if(vm.count("input_file")) input_file = vm["input_file"].as<std::string>();
 	
-	TrainingData trainData("trainingData.txt");
+	TrainingData trainData("train_data.txt");
 	vector<unsigned> topology;	
-	trainData.getTopology(topology);
+	trainData.getTopology(topology_file_name, topology);
 	
 	Net myNet(topology);
 	myNet.load(input_file);
@@ -80,7 +81,8 @@ int main(int argc, char* argv[])
 	std::map<std::pair<int,int>,vector<double>>	m_deltas, weights;
 	while(!trainData.isEof()){
 		// Get new input data and feed it forward:
-		assert(trainData.getNextInputs(inputVals) == topology[0]);
+		trainData.getNextInputs(inputVals);
+		if(inputVals.size() != topology[0]) continue;
 		myNet.feedForward(inputVals);
 		
 		// Collect the net's actual results:

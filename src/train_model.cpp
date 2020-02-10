@@ -89,7 +89,6 @@ int main(int argc, char* argv[])
 	Net myNet(topology);
 	myNet.load(input_file);
 	cout << "myNet.minimal_error = " << myNet.minimal_error << endl;
-	vector<Net> myNet_dump; //to save model states for different input signals to analyze corellations
 	
 	vector<double> inputVals, targetVals, resultVals;	
 	int trainingPass = 0;
@@ -137,7 +136,6 @@ int main(int argc, char* argv[])
 			}	
 			assert(targetVals.size() == topology.back());	
 			myNet.backProp(targetVals, !(trainingPass == epochs_max)); //if last ecphc, do not update weight, just calculate error	
-			if(trainingPass == epochs_max) myNet_dump.push_back(myNet);			
 			epoch_num_in++;
 			epoch_error += myNet.getRecentAverageError();
 			if(use_gnuplot){

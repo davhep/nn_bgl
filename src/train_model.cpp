@@ -17,6 +17,7 @@
 #include <./training_data.h>
 
 #include <boost/program_options.hpp>
+#include <unistd.h>
 
 #define debug_high false
 #define debug_low false
@@ -106,7 +107,7 @@ int main(int argc, char* argv[])
 		fflush(gp);
 	}
 	while(trainingPass <= epochs_max){
-		myNet.eta = 10.0/(myNet.trainingPass+1000.0);
+		myNet.eta = 100.0/(myNet.trainingPass+1000.0);
 		
 		double epoch_error = 0;
 		double epoch_average_error = 0;
@@ -116,6 +117,7 @@ int main(int argc, char* argv[])
 			remove("model_vs_practice_dynamic.txt");
 			data_dump.open("model_vs_practice_dynamic.txt");
 		};
+		
 	    // for gnuplotting by 
 	    // splot 'model_vs_practice.txt' u 2:3:7, 'model_vs_practice.txt' u 2:3:7
 	
@@ -166,6 +168,8 @@ int main(int argc, char* argv[])
 			fprintf(gp, "reread\n");
 			fprintf(gp, "replot\n");
 			fflush(gp);
+			while(!system("test -z \"$(lsof model_vs_practice_dynamic.txt|grep train)\""));
+			//while(!system("./check_lsof"));
 		}
 	    trainData.reset();
 	    validateData.reset();

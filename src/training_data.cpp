@@ -78,3 +78,9 @@ unsigned TrainingData::getTargetOutputs(vector<double> &targetOutputVals)
 
     return targetOutputVals.size();
 }
+
+unsigned TrainingData::get(vector<double> &inputVals, vector<double> &targetOutputVals)
+{
+	getNextInputs(inputVals);
+	getTargetOutputs(targetOutputVals);
+}

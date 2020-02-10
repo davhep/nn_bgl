@@ -83,11 +83,13 @@ int main(int argc, char* argv[])
     if(vm.count("output_final_dot")) final_result_dot = vm["output_final_dot"].as<std::string>();
     
 	TrainingData trainData("train_data.txt");
+	TrainingData validateData("validate_data.txt");
 	vector<unsigned> topology;	
 	trainData.getTopology(topology_file_name, topology);
 	
 	Net myNet(topology);
 	myNet.load(input_file);
+	
 	cout << "myNet.minimal_error = " << myNet.minimal_error << endl;
 	
 	vector<double> inputVals, targetVals, resultVals;	
@@ -104,8 +106,7 @@ int main(int argc, char* argv[])
 		fflush(gp);
 	}
 	while(trainingPass <= epochs_max){
-		++trainingPass;
-		myNet.eta = 100.0/(myNet.trainingPass+1000.0);
+		myNet.eta = 10.0/(myNet.trainingPass+1000.0);
 		
 		double epoch_error = 0;
 		double epoch_average_error = 0;
@@ -114,52 +115,61 @@ int main(int argc, char* argv[])
 		if(use_gnuplot){
 			remove("model_vs_practice_dynamic.txt");
 			data_dump.open("model_vs_practice_dynamic.txt");
-		}
+		};
 	    // for gnuplotting by 
 	    // splot 'model_vs_practice.txt' u 2:3:7, 'model_vs_practice.txt' u 2:3:7
 	
-		while(!trainData.isEof()){
+		while(trainData.get(inputVals, targetVals)){
 			// Get new input data and feed it forward:
-			trainData.getNextInputs(inputVals);
-			if(inputVals.size() != topology[0]) continue;
+			assert(inputVals.size() == myNet.input_layer.size());
+			assert(targetVals.size() == myNet.output_layer.size());
 			myNet.feedForward(inputVals);	
-			// Collect the net's actual results:
-			myNet.getResults(resultVals);
 			// Train the net what the outputs should have been:
-			trainData.getTargetOutputs(targetVals);
-			if(debug_high)
-			{
-				cout << "Pass" << trainingPass << endl;
-				showVectorVals("Inputs :", inputVals);
-				showVectorVals("Outputs:", resultVals);
-				showVectorVals("Targets:", targetVals);
-			}	
-			assert(targetVals.size() == topology.back());	
-			myNet.backProp(targetVals, !(trainingPass == epochs_max)); //if last ecphc, do not update weight, just calculate error	
+			myNet.backProp(targetVals, !(trainingPass == epochs_max)); //if last epoch, do not update weight, just calculate error	
 			epoch_num_in++;
 			epoch_error += myNet.getRecentAverageError();
 			if(use_gnuplot){
+				// Collect the net's actual results:
+				myNet.getResults(resultVals);
 				dumpVectorVals("inputVals	", data_dump, inputVals);
 				dumpVectorVals("resultVals	", data_dump, resultVals);
 				dumpVectorVals("targetVals	", data_dump, targetVals);
 				data_dump << endl;
 		    }
 		}
+		
+		epoch_average_error = epoch_error/epoch_num_in;
+		cerr << "At epoch " << trainingPass << " Net recent average error: " << epoch_average_error;
+	    
+	    if(epoch_average_error < myNet.minimal_error){
+			myNet.minimal_error = epoch_average_error;
+			saveModel(myNet, "best_result_serialized.txt",  "best_result.dot");
+			//cout << "minimal error detected, model saved to files" << endl;
+	    }
+		
+		epoch_error = 0;
+		epoch_num_in = 0;
+		while(validateData.get(inputVals, targetVals)){
+			// Get new input data and feed it forward:
+			assert(inputVals.size() == myNet.input_layer.size());
+			assert(targetVals.size() == myNet.output_layer.size());
+			myNet.feedForward(inputVals);	
+			myNet.backProp(targetVals, false); 
+			epoch_num_in++;
+			epoch_error += myNet.getRecentAverageError();
+		}
+		
+		epoch_average_error = epoch_error/epoch_num_in;
+		cerr << " validate error = " << epoch_average_error << endl;
+		
 		if(use_gnuplot){
 			fprintf(gp, "reread\n");
 			fprintf(gp, "replot\n");
 			fflush(gp);
 		}
-		
-		epoch_average_error = epoch_error/epoch_num_in;
-
-	    cerr << "At epoch " << trainingPass << " Net recent average error: " << epoch_average_error << endl;
-	    if(epoch_average_error < myNet.minimal_error){
-			myNet.minimal_error = epoch_average_error;
-			saveModel(myNet, "best_result_serialized.txt",  "best_result.dot");
-			cout << "minimal error detected, model saved to files" << endl;
-	    }
 	    trainData.reset();
+	    validateData.reset();
+	    ++trainingPass;
     }
 	saveModel(myNet, final_result_serialized, final_result_dot);	
 }

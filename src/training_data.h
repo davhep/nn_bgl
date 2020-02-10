@@ -28,6 +28,7 @@ public:
 	// Returns the number of input values read from the file:
 	unsigned getNextInputs(vector<double> &inputVals);
 	unsigned getTargetOutputs(vector<double> &targetOutputVals);
+	unsigned get(vector<double> &inputVals, vector<double> &targetOutputVals);
     void reset(void); 
 private:
 	ifstream m_trainingDataFile;

@@ -93,5 +93,5 @@ public:
 	void load(const std::string path);
 	
 	template<class Archive>
-		void serialize(Archive & ar, const unsigned int file_version);
+	void serialize(Archive & ar, const unsigned int file_version);
 };

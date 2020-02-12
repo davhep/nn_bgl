@@ -26,11 +26,16 @@
 #include <boost/container/detail/iterators.hpp>
 
 #include <iterator>
+#include <random>
+#include <algorithm>
+#include <chrono>
 
 #define debug_high false
 #define debug_low false
 
 using namespace std;
+
+enum net_type {layers, water_fall};
 
 struct NeuronP {
    int tag;
@@ -69,7 +74,7 @@ typedef boost::graph_traits<Graph>::edge_descriptor edge_descriptor;
 class Net
 {
 public:
-	Net(const vector<unsigned> &topology);
+	Net(const vector<unsigned> &topology, net_type type_of_network = layers);
 	void feedForward(const vector<double> &inputVals);
 	void backProp(const vector<double> &targetVals, bool update_weights = true);
 	void getResults(vector<double> &resultVals) const;

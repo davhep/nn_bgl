@@ -53,7 +53,10 @@ void Net::backProp(const std::vector<double> &targetVals, bool update_weights)
 	{
 		double delta = targetVals[ output_layer_element.second ] - m_net_graph[output_layer_element.first].m_outputVal;
 		m_error += delta *delta;
-		if(debug_low) cout << "targetVals[ output_layer_element.second ] = " << targetVals[ output_layer_element.second ] << "	m_net_graph[output_layer_element.first].m_outputVal= " << m_net_graph[output_layer_element.first].m_outputVal << endl;
+		if(debug_low){
+		cout << "output_layer_element.second= " << output_layer_element.second << "	output_layer_element.first.tag= " << m_net_graph[output_layer_element.first].tag << endl;
+		cout << "targetVals[ output_layer_element.second ] = " << targetVals[ output_layer_element.second ] << "	m_net_graph[output_layer_element.first].m_outputVal= " << m_net_graph[output_layer_element.first].m_outputVal << endl;
+	}
 	}
 	
 	m_error /= output_layer.size(); // get average error squared
@@ -146,32 +149,73 @@ void Net::feedForward(const vector<double> &inputVals)
    }
 }
 
-Net::Net(const vector<unsigned> &topology)
+Net::Net(const vector<unsigned> &topology, net_type type_of_network)
 {
 	input_layer.clear();
 	output_layer.clear();
 	minimal_error = 1e6;
 	unsigned numLayers = topology.size();
 	unsigned neurons_total = 0;
-	for(unsigned layerNum = 0; layerNum < numLayers; ++layerNum){
-		unsigned numInputs = layerNum == 0 ? 0 : topology[layerNum - 1];
-		unsigned first_prev_neuron = neurons_total - numInputs;
-		for(unsigned neuronNum = 0; neuronNum < topology[layerNum]; ++neuronNum){
-			NeuronP neuron;
-			neuron.tag = neurons_total;
-			auto vertex_new = boost::add_vertex(neuron, m_net_graph);
-			if(layerNum == 0) //if we are in input layer, storage ouput tags
-				input_layer.insert(std::pair<vertex_descriptor, int>(vertex_new, neuronNum));
-			if(layerNum == numLayers - 1) //if we are in output layer, storage ouput tags
-				output_layer.insert(std::pair<vertex_descriptor, int>(vertex_new, neuronNum));
-			for(unsigned neuronNum_prev = 0; neuronNum_prev < numInputs; neuronNum_prev++){
-				SinapsP sinaps;
-				sinaps.m_weight = double((neuronNum_prev+neuronNum) % 10)/10;
-				boost::add_edge(first_prev_neuron+neuronNum_prev, neurons_total, sinaps, m_net_graph);
-			 }
-			 neurons_total++;
-		}
+	switch(type_of_network){
+		case(layers):
+			for(unsigned layerNum = 0; layerNum < numLayers; ++layerNum){
+				unsigned numInputs = layerNum == 0 ? 0 : topology[layerNum - 1];
+				unsigned first_prev_neuron = neurons_total - numInputs;
+				for(unsigned neuronNum = 0; neuronNum < topology[layerNum]; ++neuronNum){
+					NeuronP neuron;
+					neuron.tag = neurons_total;
+					auto vertex_new = boost::add_vertex(neuron, m_net_graph);
+					if(layerNum == 0) //if we are in input layer, storage ouput tags
+						input_layer.insert(std::pair<vertex_descriptor, int>(vertex_new, neuronNum));
+					if(layerNum == numLayers - 1) //if we are in output layer, storage ouput tags
+						output_layer.insert(std::pair<vertex_descriptor, int>(vertex_new, neuronNum));
+					for(unsigned neuronNum_prev = 0; neuronNum_prev < numInputs; neuronNum_prev++){
+						SinapsP sinaps;
+						sinaps.m_weight = double((neuronNum_prev+neuronNum) % 10)/10;
+						boost::add_edge(first_prev_neuron+neuronNum_prev, neurons_total, sinaps, m_net_graph);
+					 }
+					 neurons_total++;
+				}
+			}
+		break;
+		case(water_fall):
+			unsigned int total_neurons = std::accumulate(topology.begin(), topology.end(), 0);
+			cout << "Total neurons: " << total_neurons << endl;
+			std::vector<unsigned int> neuron_in;
+			for(int neuron_num = 0; neuron_num < total_neurons; neuron_num++){
+					cout << "generatin neuron " << neuron_num << endl;
+					NeuronP neuron;
+					neuron.tag = neuron_num;
+					auto vertex_new = boost::add_vertex(neuron, m_net_graph);
+					if(neuron_num < topology[0]) //if we are in input layer, storage ouput tags
+						input_layer.insert(std::pair<vertex_descriptor, int>(vertex_new, neuron_num));
+					if( neuron_num >= (total_neurons - topology.back()) ) //if we are in output layer, storage ouput tags
+						output_layer.insert(std::pair<vertex_descriptor, int>(vertex_new, neuron_num - (total_neurons - topology.back())));
+					if(neuron_num >= topology[0]){//so, we are have to connect non-input neuron to some other neurons
+						unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+						std::shuffle(neuron_in.begin(), neuron_in.end(), std::default_random_engine(seed));
+						int n_max=4;//how many neurons output connect to this neuron input
+						if(neuron_num >= (total_neurons - topology.back())) n_max = neuron_in.size();//connect all neurons to output
+						for(int n=0;(n< n_max) && (n<neuron_num);n++){
+							unsigned int input_neuron = neuron_in[n];
+							cout << "input neuron= " << input_neuron << endl;
+							SinapsP sinaps;
+							sinaps.m_weight = double(rand() % 100)/100;
+							boost::add_edge(input_neuron, neuron_num, sinaps, m_net_graph);
+						}
+					}
+					if( neuron_num < (total_neurons - topology.back()) ) neuron_in.push_back(neuron_num);				
+			}
+			//ok, we have to check if some neuron have no outputs, and connect them to some outer neurons
+			//Graph::vertex_iterator v, vend;
+			//for (boost::tie(v, vend) = vertices(m_net_graph); v != vend; ++v) {
+			//	typename boost::graph_traits<Graph>::in_edge_iterator ei, ei_end;
+		    //    boost::tie(ei, ei_end) = out_edges(*v, m_net_graph);
+		    //    if( ei == ei_end) cout << "AAAAAAAA" << m_net_graph[*v].tag << endl;
+			//}
+		break;
 	}
+		
 	
 	boost::topological_sort(m_net_graph, std::front_inserter(topo_sorted));
     cout << "A topological ordering: ";

@@ -88,14 +88,15 @@ int main(int argc, char* argv[])
 	vector<unsigned> topology;	
 	trainData.getTopology(topology_file_name, topology);
 	
-	Net myNet(topology);
+	Net myNet(topology, water_fall);
+	saveModel(myNet, "init_serialized.txt",  "init.dot");
 	myNet.load(input_file);
 	
 	cout << "myNet.minimal_error = " << myNet.minimal_error << endl;
 	
 	vector<double> inputVals, targetVals, resultVals;	
 	int trainingPass = 0;
-	int epochs_max = 100;
+	int epochs_max = 1000;
 	
 	FILE *gp;
 	if(use_gnuplot){
@@ -130,6 +131,11 @@ int main(int argc, char* argv[])
 			myNet.backProp(targetVals, !(trainingPass == epochs_max)); //if last epoch, do not update weight, just calculate error	
 			epoch_num_in++;
 			epoch_error += myNet.getRecentAverageError();
+			if(debug_high){
+				dumpVectorVals("inputVals	", data_dump, inputVals);
+				dumpVectorVals("resultVals	", data_dump, resultVals);
+				dumpVectorVals("targetVals	", data_dump, targetVals);
+			}
 			if(use_gnuplot){
 				// Collect the net's actual results:
 				myNet.getResults(resultVals);
@@ -141,18 +147,18 @@ int main(int argc, char* argv[])
 		}
 		
 		epoch_average_error = epoch_error/epoch_num_in;
-		cerr << "At epoch " << trainingPass << " Net recent average error: " << epoch_average_error;
+		cerr << "At epoch " << trainingPass << " Net recent average error: " << epoch_average_error << endl;
 	    
 	    if(epoch_average_error < myNet.minimal_error){
 			myNet.minimal_error = epoch_average_error;
 			saveModel(myNet, "best_result_serialized.txt",  "best_result.dot");
-			//cout << "minimal error detected, model saved to files" << endl;
+			cout << "minimal error detected, model saved to files" << endl;
 	    }
 		
 		epoch_error = 0;
 		epoch_num_in = 0;
 		while(validateData.get(inputVals, targetVals)){
-			// Get new input data and feed it forward:
+			// Get new input data and feed it forward:	
 			assert(inputVals.size() == myNet.input_layer.size());
 			assert(targetVals.size() == myNet.output_layer.size());
 			myNet.feedForward(inputVals);	
@@ -169,11 +175,12 @@ int main(int argc, char* argv[])
 			fprintf(gp, "replot\n");
 			fflush(gp);
 			while(!system("test -z \"$(lsof model_vs_practice_dynamic.txt|grep train)\""));
-			//while(!system("./check_lsof"));
 		}
 	    trainData.reset();
 	    validateData.reset();
+	    
 	    ++trainingPass;
+	    
     }
 	saveModel(myNet, final_result_serialized, final_result_dot);	
 }

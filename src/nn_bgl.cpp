@@ -183,7 +183,7 @@ Net::Net(const vector<unsigned> &topology, net_type type_of_network)
 			cout << "Total neurons: " << total_neurons << endl;
 			std::vector<unsigned int> neuron_in;
 			for(int neuron_num = 0; neuron_num < total_neurons; neuron_num++){
-					cout << "generatin neuron " << neuron_num << endl;
+					cout << "generating neuron " << neuron_num << endl;
 					NeuronP neuron;
 					neuron.tag = neuron_num;
 					auto vertex_new = boost::add_vertex(neuron, m_net_graph);
@@ -195,7 +195,6 @@ Net::Net(const vector<unsigned> &topology, net_type type_of_network)
 						unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 						std::shuffle(neuron_in.begin(), neuron_in.end(), std::default_random_engine(seed));
 						int n_max=4;//how many neurons output connect to this neuron input
-						if(neuron_num >= (total_neurons - topology.back())) n_max = neuron_in.size();//connect all neurons to output
 						for(int n=0;(n< n_max) && (n<neuron_num);n++){
 							unsigned int input_neuron = neuron_in[n];
 							cout << "input neuron= " << input_neuron << endl;
@@ -207,12 +206,20 @@ Net::Net(const vector<unsigned> &topology, net_type type_of_network)
 					if( neuron_num < (total_neurons - topology.back()) ) neuron_in.push_back(neuron_num);				
 			}
 			//ok, we have to check if some neuron have no outputs, and connect them to some outer neurons
-			//Graph::vertex_iterator v, vend;
-			//for (boost::tie(v, vend) = vertices(m_net_graph); v != vend; ++v) {
-			//	typename boost::graph_traits<Graph>::in_edge_iterator ei, ei_end;
-		    //    boost::tie(ei, ei_end) = out_edges(*v, m_net_graph);
-		    //    if( ei == ei_end) cout << "AAAAAAAA" << m_net_graph[*v].tag << endl;
-			//}
+			Graph::vertex_iterator v, vend;
+			for (boost::tie(v, vend) = vertices(m_net_graph); v != vend; ++v){
+				auto outer_neuron = output_layer.find(*v);
+				if(outer_neuron != output_layer.end()) continue;
+				auto out_edges = boost::out_edges(*v, m_net_graph);
+		        if(out_edges.first == out_edges.second){
+					for(auto outer_neuron: output_layer){
+						cout << *v << "	" << outer_neuron.first << endl;
+						SinapsP sinaps;
+						sinaps.m_weight = double(rand() % 100)/100;
+						boost::add_edge( *v, outer_neuron.first, sinaps, m_net_graph);
+					}
+				}
+			}
 		break;
 	}
 		

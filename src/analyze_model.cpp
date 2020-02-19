@@ -121,7 +121,7 @@ int main(int argc, char* argv[])
 		auto weights_vec = weights[std::make_pair(source,target)];
 	    auto m_deltas_vec = m_deltas[std::make_pair(source,target)];	
 		double sum_weights = std::accumulate(weights_vec.begin(), weights_vec.end(), 0.0);
-		double mean_weights = sum_weights / weights.size();
+		double mean_weights = sum_weights / weights_vec.size();
 		
 		double sum_deltaw = std::accumulate(m_deltas_vec.begin(), m_deltas_vec.end(), 0.0);
 		double mean_deltaw = sum_deltaw / m_deltas_vec.size();

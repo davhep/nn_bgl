@@ -58,6 +58,9 @@ int main(int argc, char* argv[])
 	std::string final_result_dot = "final_result.dot";
 	std::string topology_file_name = "topology.txt";
 	bool use_gnuplot = false;
+	std::string init_topology = "layers";
+	net_type type_of_network =  layers;
+
 	boost::program_options::options_description desc("Allowed options");
 	desc.add_options()
 	// First parameter describes option name/short name
@@ -68,6 +71,7 @@ int main(int argc, char* argv[])
 	("output_final_serialized,ofs", boost::program_options::value(&final_result_serialized), "pathname for final serialized result ")
 	("output_final_dot,ofd", boost::program_options::value(&final_result_dot), "pathname prefix for final dot result")
 	("gnuplot,gp",  boost::program_options::bool_switch(&use_gnuplot), "use gnuplot dynamical plotting")
+	("init_topology,it",  boost::program_options::value(&init_topology), "initial topology: \n layers \n water_fall")
 	;
     
     boost::program_options::variables_map vm;
@@ -82,13 +86,17 @@ int main(int argc, char* argv[])
     if(vm.count("input_file")) input_file = vm["input_file"].as<std::string>();
     if(vm.count("output_final_serialized")) final_result_serialized = vm["output_final_serialized"].as<std::string>();
     if(vm.count("output_final_dot")) final_result_dot = vm["output_final_dot"].as<std::string>();
+    if(vm.count("init_topology")) init_topology = vm["init_topology"].as<std::string>();
+    
+    if(!init_topology.compare("layers")) type_of_network =  layers;
+    if(!init_topology.compare("water_fall")) type_of_network =  water_fall;
     
 	TrainingData trainData("train_data.txt");
 	TrainingData validateData("validate_data.txt");
 	vector<unsigned> topology;	
 	trainData.getTopology(topology_file_name, topology);
 	
-	Net myNet(topology, water_fall);
+	Net myNet(topology, type_of_network);
 	saveModel(myNet, "init_serialized.txt",  "init.dot");
 	myNet.load(input_file);
 	

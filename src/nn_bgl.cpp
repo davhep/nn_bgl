@@ -149,6 +149,14 @@ void Net::feedForward(const vector<double> &inputVals)
    }
 }
 
+void Net::topo_sort(){
+	topo_sorted.clear();
+	boost::topological_sort(m_net_graph, std::front_inserter(topo_sorted));
+	cout << "A topological ordering: ";
+    for (int i = 0; i < topo_sorted.size(); i++) cout << m_net_graph[topo_sorted[i]].tag  << " ";
+    cout << endl;
+}
+
 Net::Net(const vector<unsigned> &topology, net_type type_of_network)
 {
 	input_layer.clear();
@@ -223,11 +231,8 @@ Net::Net(const vector<unsigned> &topology, net_type type_of_network)
 		break;
 	}
 		
-	
-	boost::topological_sort(m_net_graph, std::front_inserter(topo_sorted));
-    cout << "A topological ordering: ";
-    for (int i = 0; i < topo_sorted.size(); i++) cout << m_net_graph[topo_sorted[i]].tag  << " ";
-    cout << endl;
+	topo_sort();
+
 }
 
 void Net::save( std::string path){

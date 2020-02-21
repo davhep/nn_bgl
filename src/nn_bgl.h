@@ -93,7 +93,7 @@ public:
 	double m_recentAverageError = 0;
 	static double m_recentAverageSmoothingFactor;
 	std::map<vertex_descriptor, int> input_layer, output_layer;
-	
+	void topo_sort();
 	void save(const std::string path);
 	void load(const std::string path);
 	

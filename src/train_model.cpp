@@ -99,7 +99,7 @@ int main(int argc, char* argv[])
 	Net myNet(topology, type_of_network);
 	saveModel(myNet, "init_serialized.txt",  "init.dot");
 	myNet.load(input_file);
-	
+	myNet.topo_sort();
 	cout << "myNet.minimal_error = " << myNet.minimal_error << endl;
 	
 	vector<double> inputVals, targetVals, resultVals;	

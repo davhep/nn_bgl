@@ -128,10 +128,10 @@ void Net::feedForward(const vector<double> &inputVals)
 		auto vertex = topo_sorted[i];
 		auto neuron = &m_net_graph[vertex];
 		if(debug_low) cout << "Processing neuron " << neuron->tag << endl;
-		auto input_layer_position = input_layer.find(vertex);
-		if(input_layer_position != input_layer.end()){ 	//ok, we are in first layer of neurons - outputs are fixed from input values
-			neuron->m_outputVal = inputVals[input_layer_position->second];
-			if(debug_low) cout << "inputVals[input_layer_position->second]= " << inputVals[input_layer_position->second] << endl;
+		
+		if(neuron->is_input){
+			neuron->m_outputVal = inputVals[neuron->input_signal];
+			if(debug_low) cout << "inputVals[neuron.input_signal]= " << inputVals[neuron->input_signal] << endl;
 		}
 		else
 		{
@@ -149,12 +149,24 @@ void Net::feedForward(const vector<double> &inputVals)
    }
 }
 
-void Net::topo_sort(){
+void Net::on_topology_update(){
+	//if we change topology (add/remove edge or vertex), we have to update some secondary information about graph
+	
+	//we have to recalculate toloplogical order of vertices for correct forward/backward procedure
 	topo_sorted.clear();
 	boost::topological_sort(m_net_graph, std::front_inserter(topo_sorted));
 	cout << "A topological ordering: ";
     for (int i = 0; i < topo_sorted.size(); i++) cout << m_net_graph[topo_sorted[i]].tag  << " ";
     cout << endl;
+    
+    //because of re-numbering vertices after remove vertices, we have to update output/input lists
+    input_layer.clear();
+    output_layer.clear();
+    boost::graph_traits<Graph>::vertex_iterator vi, vi_end;
+    for (boost::tie(vi, vi_end) = boost::vertices(m_net_graph); vi != vi_end; ++vi){
+		if(m_net_graph[*vi].is_input) input_layer.insert(std::pair<vertex_descriptor, int>(*vi, m_net_graph[*vi].input_signal));
+		if(m_net_graph[*vi].is_output) output_layer.insert(std::pair<vertex_descriptor, int>(*vi, m_net_graph[*vi].output_signal));
+	}
 }
 
 Net::Net(const vector<unsigned> &topology, net_type type_of_network)
@@ -172,11 +184,17 @@ Net::Net(const vector<unsigned> &topology, net_type type_of_network)
 				for(unsigned neuronNum = 0; neuronNum < topology[layerNum]; ++neuronNum){
 					NeuronP neuron;
 					neuron.tag = neurons_total;
+					if(layerNum == 0){
+						//if we are in input layer, storage ouput tags
+						neuron.is_input = true;
+						neuron.input_signal = neuronNum;
+					}
+					if(layerNum == numLayers - 1){
+						//if we are in output layer, storage ouput tags
+						neuron.is_output = true;
+						neuron.output_signal = neuronNum;
+					}
 					auto vertex_new = boost::add_vertex(neuron, m_net_graph);
-					if(layerNum == 0) //if we are in input layer, storage ouput tags
-						input_layer.insert(std::pair<vertex_descriptor, int>(vertex_new, neuronNum));
-					if(layerNum == numLayers - 1) //if we are in output layer, storage ouput tags
-						output_layer.insert(std::pair<vertex_descriptor, int>(vertex_new, neuronNum));
 					for(unsigned neuronNum_prev = 0; neuronNum_prev < numInputs; neuronNum_prev++){
 						SinapsP sinaps;
 						sinaps.m_weight = double((neuronNum_prev+neuronNum) % 10)/10;
@@ -196,9 +214,9 @@ Net::Net(const vector<unsigned> &topology, net_type type_of_network)
 					neuron.tag = neuron_num;
 					auto vertex_new = boost::add_vertex(neuron, m_net_graph);
 					if(neuron_num < topology[0]) //if we are in input layer, storage ouput tags
-						input_layer.insert(std::pair<vertex_descriptor, int>(vertex_new, neuron_num));
+						neuron.input_signal = neuron_num;
 					if( neuron_num >= (total_neurons - topology.back()) ) //if we are in output layer, storage ouput tags
-						output_layer.insert(std::pair<vertex_descriptor, int>(vertex_new, neuron_num - (total_neurons - topology.back())));
+						neuron.output_signal = neuron_num;
 					if(neuron_num >= topology[0]){//so, we are have to connect non-input neuron to some other neurons
 						unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 						std::shuffle(neuron_in.begin(), neuron_in.end(), std::default_random_engine(seed));
@@ -230,9 +248,7 @@ Net::Net(const vector<unsigned> &topology, net_type type_of_network)
 			}
 		break;
 	}
-		
-	topo_sort();
-
+	on_topology_update();
 }
 
 void Net::save( std::string path){

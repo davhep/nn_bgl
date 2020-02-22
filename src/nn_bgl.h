@@ -39,12 +39,19 @@ enum net_type {layers, water_fall};
 
 struct NeuronP {
    int tag;
+   bool is_input=false, is_output=false;
+   unsigned int input_signal;	//if connected to corresponding input value
+   unsigned int output_signal;  //if we get from neuron corresponding output value
    double m_input_value;
    double m_outputVal;
    double m_gradient;
    template<class Archive>
    void serialize(Archive & ar, const unsigned int file_version){
 	   ar & tag;
+	   ar & is_input;
+	   ar & is_output;
+	   ar & input_signal;
+	   ar & output_signal;
 	   ar & m_input_value;
 	   ar & m_outputVal;
 	   ar & m_gradient;
@@ -93,7 +100,7 @@ public:
 	double m_recentAverageError = 0;
 	static double m_recentAverageSmoothingFactor;
 	std::map<vertex_descriptor, int> input_layer, output_layer;
-	void topo_sort();
+	void on_topology_update();
 	void save(const std::string path);
 	void load(const std::string path);
 	

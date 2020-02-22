@@ -99,7 +99,7 @@ int main(int argc, char* argv[])
 	Net myNet(topology, type_of_network);
 	saveModel(myNet, "init_serialized.txt",  "init.dot");
 	myNet.load(input_file);
-	myNet.topo_sort();
+	myNet.on_topology_update();
 	cout << "myNet.minimal_error = " << myNet.minimal_error << endl;
 	
 	vector<double> inputVals, targetVals, resultVals;	
@@ -163,21 +163,22 @@ int main(int argc, char* argv[])
 			cout << "minimal error detected, model saved to files" << endl;
 	    }
 		
-		epoch_error = 0;
-		epoch_num_in = 0;
-		while(validateData.get(inputVals, targetVals)){
-			// Get new input data and feed it forward:	
-			assert(inputVals.size() == myNet.input_layer.size());
-			assert(targetVals.size() == myNet.output_layer.size());
-			myNet.feedForward(inputVals);	
-			myNet.backProp(targetVals, false); 
-			epoch_num_in++;
-			epoch_error += myNet.getRecentAverageError();
-		}
-		
-		epoch_average_error = epoch_error/epoch_num_in;
-		cerr << " validate error = " << epoch_average_error << endl;
-		
+		if(trainingPass % 10){
+			epoch_error = 0;
+			epoch_num_in = 0;
+			while(validateData.get(inputVals, targetVals)){
+				// Get new input data and feed it forward:	
+				assert(inputVals.size() == myNet.input_layer.size());
+				assert(targetVals.size() == myNet.output_layer.size());
+				myNet.feedForward(inputVals);	
+				myNet.backProp(targetVals, false); 
+				epoch_num_in++;
+				epoch_error += myNet.getRecentAverageError();
+			}
+			
+			epoch_average_error = epoch_error/epoch_num_in;
+			cerr << " validate error = " << epoch_average_error << endl;
+	    }
 		if(use_gnuplot){
 			fprintf(gp, "reread\n");
 			fprintf(gp, "replot\n");

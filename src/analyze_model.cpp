@@ -195,14 +195,11 @@ int main(int argc, char* argv[])
 		boost::remove_vertex(vertices_to_remove[n]-n, myNet.m_net_graph);
 	}
 	
-	myNet.topo_sort();
+	myNet.on_topology_update();
 	
 	for (boost::tie(vi, vi_end) = boost::vertices(myNet.m_net_graph); vi != vi_end; ++vi){
 		cout << *vi << "	" << *vi_end << endl;
 	}
-	
-	
+
 	saveModel(myNet, "updated_model.txt", "updated_model.dot");
-	
-	
 }

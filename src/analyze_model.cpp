@@ -65,6 +65,17 @@ double container_deviation(container data){
 	return std::sqrt(dispersion);
 }
 
+template<class container>
+double container_correlation(container data_x, container data_y){
+	double E_x = container_mean(data_x);
+	double E_y = container_mean(data_y);
+	double E_xx = std::inner_product(data_x.begin(), data_x.end(), data_x.begin(), 0.0)/data_x.size();
+	double E_yy = std::inner_product(data_y.begin(), data_y.end(), data_y.begin(), 0.0)/data_y.size();
+	double E_xy = std::inner_product(data_x.begin(), data_x.end(), data_y.begin(), 0.0)/data_x.size();
+	double correlation = (E_xy-E_x*E_y)/std::sqrt(E_xx-E_x*E_x)/std::sqrt(E_yy-E_y*E_y);
+	return correlation;
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -147,8 +158,7 @@ int main(int argc, char* argv[])
 				std::pair<edge_descriptor,bool> edge_saved = boost::edge(source, target, myNet.m_net_graph);
 				assert(edge_saved.second == true); //because we _must_ have edge in saved graph, if one exists in current graph
 				//cout << dumped_net.m_net_graph[edge_saved.first].m_delta_weight << endl;
-				//weights[std::make_pair(source,target)].push_back(myNet.m_net_graph[edge_saved.first].m_weight);
-				weights[std::make_pair(source,target)].push_back(fabs(myNet.m_net_graph[source].m_outputVal) * myNet.m_net_graph[edge_saved.first].m_weight);
+				weights[std::make_pair(source,target)].push_back(myNet.m_net_graph[edge_saved.first].m_weight);
 				m_deltas[std::make_pair(source,target)].push_back(myNet.m_net_graph[edge_saved.first].m_delta_weight);
 		}
 	}

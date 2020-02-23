@@ -118,8 +118,8 @@ int main(int argc, char* argv[])
 	// splot 'model_vs_practice.txt' u 2:3:5, 'model_vs_practice.txt' u 2:3:7
 	boost::graph_traits<Graph>::edge_iterator ei, ei_end;
 	boost::graph_traits<Graph>::vertex_iterator vi, vi_end;
-	std::map<std::pair<int,int>,vector<double>>	m_deltas, weights;
-	std::map<int, vector<double>> out_values;
+	std::map<edge_descriptor, vector<double>>	m_deltas, weights;
+	std::map<vertex_descriptor, vector<double>> out_values;
 	
 	double epoch_error = 0;
 	double epoch_average_error = 0;
@@ -154,10 +154,8 @@ int main(int argc, char* argv[])
 		data_dump << endl;
 		
 		for (boost::tie(ei, ei_end) = boost::edges(myNet.m_net_graph); ei != ei_end; ++ei){
-				auto source = boost::source ( *ei, myNet.m_net_graph);
-				auto target = boost::target ( *ei, myNet.m_net_graph);
-				weights[std::make_pair(source,target)].push_back(myNet.m_net_graph[*ei].m_weight);
-				m_deltas[std::make_pair(source,target)].push_back(myNet.m_net_graph[*ei].m_delta_weight);
+				weights[*ei].push_back(myNet.m_net_graph[*ei].m_weight);
+				m_deltas[*ei].push_back(myNet.m_net_graph[*ei].m_delta_weight);
 		}
 		for (boost::tie(vi, vi_end) = boost::vertices(myNet.m_net_graph); vi != vi_end; ++vi){
 			out_values[*vi].push_back(myNet.m_net_graph[*vi].m_outputVal);
@@ -168,21 +166,21 @@ int main(int argc, char* argv[])
 	
 	//we try to analize and update model
 
-	std::vector<std::pair<int,int>> egdes_to_remove;
+	std::vector<edge_descriptor> egdes_to_remove;
 	
 	//let`s iterate over synapses
 	for (boost::tie(ei, ei_end) = boost::edges(myNet.m_net_graph); ei != ei_end; ++ei){
 		auto source = boost::source ( *ei, myNet.m_net_graph);
 		auto target = boost::target ( *ei, myNet.m_net_graph);
-	    auto weights_vec = weights[std::make_pair(source,target)];
-	    auto m_deltas_vec = m_deltas[std::make_pair(source,target)];
+	    auto weights_vec = weights[*ei];
+	    auto m_deltas_vec = m_deltas[*ei];
 	    	
 		cout << source << " to " << target << " W= " << container_mean(weights_vec) << "	W_var= " << container_deviation(weights_vec) << "	d= " << container_mean(m_deltas_vec) << "	d_var=	" << container_deviation(m_deltas_vec) << " d_var/W= " << container_deviation(m_deltas_vec)/container_mean(weights_vec) << endl;
 		
 		// remove useless - with low weights
 		if(fabs(container_mean(weights_vec)) < 0.05){
 			cout << "Removing edge!!!" << endl;
-			egdes_to_remove.push_back(std::pair<int,int>(source, target));
+			egdes_to_remove.push_back(*ei);
 		}
 		
 		
@@ -193,10 +191,10 @@ int main(int argc, char* argv[])
 		}
 	}
 	
-	for(auto egde_to_remove : egdes_to_remove)	boost::remove_edge(egde_to_remove.first, egde_to_remove.second, myNet.m_net_graph);
+	for(auto egde_to_remove : egdes_to_remove)	boost::remove_edge(egde_to_remove, myNet.m_net_graph);
 	
 	//iterate over vertices and remove neurons without output edges
-	std::vector<unsigned int> vertices_to_remove;
+	std::vector<vertex_descriptor> vertices_to_remove;
 	for (boost::tie(vi, vi_end) = boost::vertices(myNet.m_net_graph); vi != vi_end; ++vi){
 		cout << *vi << endl;
 		auto outer_neuron = myNet.output_layer.find(*vi);
@@ -206,11 +204,11 @@ int main(int argc, char* argv[])
 		if(ei == ei_end){
 			cout << "Removing vertex " << *vi << endl;
 			vertices_to_remove.push_back(*vi);
-			//if(*vi == 21) break;
 		}
 	}
 	
-	for(int n=0; n< vertices_to_remove.size(); n++){
+	for(int n=0; n < vertices_to_remove.size(); n++){
+		//We have a serious problem here - then we remove some vertex, all next vertices will be re-numbered, so we have to make dirty unstable hack and assume logical re-numbering by only one by vertex
 		boost::clear_vertex(vertices_to_remove[n]-n, myNet.m_net_graph);
 		boost::remove_vertex(vertices_to_remove[n]-n, myNet.m_net_graph);
 	}

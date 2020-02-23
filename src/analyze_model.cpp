@@ -119,6 +119,7 @@ int main(int argc, char* argv[])
 	boost::graph_traits<Graph>::edge_iterator ei, ei_end;
 	boost::graph_traits<Graph>::vertex_iterator vi, vi_end;
 	std::map<std::pair<int,int>,vector<double>>	m_deltas, weights;
+	std::map<int, vector<double>> out_values;
 	
 	double epoch_error = 0;
 	double epoch_average_error = 0;
@@ -155,11 +156,11 @@ int main(int argc, char* argv[])
 		for (boost::tie(ei, ei_end) = boost::edges(myNet.m_net_graph); ei != ei_end; ++ei){
 				auto source = boost::source ( *ei, myNet.m_net_graph);
 				auto target = boost::target ( *ei, myNet.m_net_graph);
-				std::pair<edge_descriptor,bool> edge_saved = boost::edge(source, target, myNet.m_net_graph);
-				assert(edge_saved.second == true); //because we _must_ have edge in saved graph, if one exists in current graph
-				//cout << dumped_net.m_net_graph[edge_saved.first].m_delta_weight << endl;
-				weights[std::make_pair(source,target)].push_back(myNet.m_net_graph[edge_saved.first].m_weight);
-				m_deltas[std::make_pair(source,target)].push_back(myNet.m_net_graph[edge_saved.first].m_delta_weight);
+				weights[std::make_pair(source,target)].push_back(myNet.m_net_graph[*ei].m_weight);
+				m_deltas[std::make_pair(source,target)].push_back(myNet.m_net_graph[*ei].m_delta_weight);
+		}
+		for (boost::tie(vi, vi_end) = boost::vertices(myNet.m_net_graph); vi != vi_end; ++vi){
+			out_values[*vi].push_back(myNet.m_net_graph[*vi].m_outputVal);
 		}
 	}
 	
@@ -169,7 +170,7 @@ int main(int argc, char* argv[])
 
 	std::vector<std::pair<int,int>> egdes_to_remove;
 	
-	//let`s iterate over synapses and  remove useless - with low weights
+	//let`s iterate over synapses
 	for (boost::tie(ei, ei_end) = boost::edges(myNet.m_net_graph); ei != ei_end; ++ei){
 		auto source = boost::source ( *ei, myNet.m_net_graph);
 		auto target = boost::target ( *ei, myNet.m_net_graph);
@@ -177,9 +178,18 @@ int main(int argc, char* argv[])
 	    auto m_deltas_vec = m_deltas[std::make_pair(source,target)];
 	    	
 		cout << source << " to " << target << " W= " << container_mean(weights_vec) << "	W_var= " << container_deviation(weights_vec) << "	d= " << container_mean(m_deltas_vec) << "	d_var=	" << container_deviation(m_deltas_vec) << " d_var/W= " << container_deviation(m_deltas_vec)/container_mean(weights_vec) << endl;
+		
+		// remove useless - with low weights
 		if(fabs(container_mean(weights_vec)) < 0.05){
 			cout << "Removing edge!!!" << endl;
 			egdes_to_remove.push_back(std::pair<int,int>(source, target));
+		}
+		
+		
+		//analyze correlation between gradients on the edge and output from other neuron
+		for (boost::tie(vi, vi_end) = boost::vertices(myNet.m_net_graph); vi != vi_end; ++vi){
+			double correlation = container_correlation(out_values[*vi], m_deltas_vec);
+			if(fabs(correlation) > 0.15) cout << "Corellation with vertices: " <<  "| vi= " << *vi << "	corr=	" << correlation << " | " << endl;
 		}
 	}
 	

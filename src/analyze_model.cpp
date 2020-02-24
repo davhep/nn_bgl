@@ -194,30 +194,26 @@ int main(int argc, char* argv[])
 	for(auto egde_to_remove : egdes_to_remove)	boost::remove_edge(egde_to_remove, myNet.m_net_graph);
 	
 	//iterate over vertices and remove neurons without output edges
-	std::vector<vertex_descriptor> vertices_to_remove;
-	for (boost::tie(vi, vi_end) = boost::vertices(myNet.m_net_graph); vi != vi_end; ++vi){
-		cout << *vi << endl;
-		auto outer_neuron = myNet.output_layer.find(*vi);
-		if(outer_neuron != myNet.output_layer.end()) continue;
-		typename boost::graph_traits<Graph>::out_edge_iterator ei, ei_end;
-		boost::tie(ei, ei_end) = out_edges(*vi, myNet.m_net_graph);
-		if(ei == ei_end){
-			cout << "Removing vertex " << *vi << endl;
-			vertices_to_remove.push_back(*vi);
+	do{
+		boost::tie(vi, vi_end) = boost::vertices(myNet.m_net_graph);
+		for (; vi != vi_end; ++vi){
+			if(myNet.m_net_graph[*vi].is_output) continue; //output neurons have no output connections at all, just inputs
+			typename boost::graph_traits<Graph>::out_edge_iterator ei, ei_end;
+			boost::tie(ei, ei_end) = out_edges(*vi, myNet.m_net_graph);
+			if(ei == ei_end){
+				cout << "Removing vertex " << *vi << "	with tag " << myNet.m_net_graph[*vi].tag << endl;
+				boost::clear_vertex(*vi, myNet.m_net_graph);
+				boost::remove_vertex(*vi, myNet.m_net_graph);
+				//1) after clear - some output connections for over neurons can be deleted
+				//2) after remove_vertex - vertices re-numbered and iteration procedure invalidated 
+				//doc says: ... If the VertexList template parameter of the adjacency_list was vecS, then all vertex descriptors, edge descriptors, and iterators for the graph are invalidated by this operation. The builtin vertex_index_t property for each vertex is renumbered so that after the operation the vertex indices still form a contiguous range [0, num_vertices(g)). ...
+				//so, we have to break vertices iteration and start again
+				break;
+			}
 		}
-	}
-	
-	for(int n=0; n < vertices_to_remove.size(); n++){
-		//We have a serious problem here - then we remove some vertex, all next vertices will be re-numbered, so we have to make dirty unstable hack and assume logical re-numbering by only one by vertex
-		boost::clear_vertex(vertices_to_remove[n]-n, myNet.m_net_graph);
-		boost::remove_vertex(vertices_to_remove[n]-n, myNet.m_net_graph);
-	}
+	}while(vi != vi_end);
 	
 	myNet.on_topology_update();
-	
-	for (boost::tie(vi, vi_end) = boost::vertices(myNet.m_net_graph); vi != vi_end; ++vi){
-		cout << *vi << "	" << *vi_end << endl;
-	}
 
 	saveModel(myNet, "updated_model.txt", "updated_model.dot");
 }

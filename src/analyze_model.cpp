@@ -76,6 +76,24 @@ double container_correlation(container data_x, container data_y){
 	return correlation;
 }
 
+std::string print_to_width(double input){
+	char str[] = "                              ";
+	sprintf (str, "%f", input);
+	std::string str_printed(str, 11);
+	return(str_printed);
+}
+
+class dfs_counter_visitor: public boost::default_dfs_visitor {
+public:
+  dfs_counter_visitor() : vv(new std::unordered_set<vertex_descriptor>()) {}
+  template < typename Vertex, typename Graph >
+    void discover_vertex(Vertex u, const Graph & g) const
+	{
+		vv->insert(u);
+		return;
+    }
+   boost::shared_ptr< std::unordered_set<vertex_descriptor> > vv;
+};
 
 int main(int argc, char* argv[])
 {
@@ -119,7 +137,7 @@ int main(int argc, char* argv[])
 	boost::graph_traits<Graph>::edge_iterator ei, ei_end;
 	boost::graph_traits<Graph>::vertex_iterator vi, vi_end;
 	std::map<edge_descriptor, vector<double>>	m_deltas, weights;
-	std::map<vertex_descriptor, vector<double>> out_values;
+	std::map<vertex_descriptor, vector<double>> out_values, m_gradient;
 	
 	double epoch_error = 0;
 	double epoch_average_error = 0;
@@ -159,6 +177,7 @@ int main(int argc, char* argv[])
 		}
 		for (boost::tie(vi, vi_end) = boost::vertices(myNet.m_net_graph); vi != vi_end; ++vi){
 			out_values[*vi].push_back(myNet.m_net_graph[*vi].m_outputVal);
+			m_gradient[*vi].push_back(myNet.m_net_graph[*vi].m_gradient);
 		}
 	}
 	
@@ -191,6 +210,26 @@ int main(int argc, char* argv[])
 		}
 	}
 	
+	//analyze correlation between gradients on the edge and output from other neuron
+	boost::graph_traits<Graph>::vertex_iterator vi_1, vi_end_1;
+	boost::graph_traits<Graph>::vertex_iterator vi_2, vi_end_2;
+	for (boost::tie(vi_1, vi_end_1) = boost::vertices(myNet.m_net_graph); vi_1 != vi_end_1; ++vi_1){
+		if(myNet.m_net_graph[*vi_1].is_input) continue; //ignore input neurons
+		dfs_counter_visitor vis;
+		auto indexmap = boost::get(boost::vertex_index, myNet.m_net_graph);
+		auto colormap = boost::make_vector_property_map<boost::default_color_type>(indexmap);
+		boost::depth_first_visit(myNet.m_net_graph, *vi_1, vis, colormap);
+		cout << *vi_1 << "||	";
+		for (boost::tie(vi_2, vi_end_2) = boost::vertices(myNet.m_net_graph); vi_2 != vi_end_2; ++vi_2){
+			if(vis.vv->count(*vi_2)>0) continue; //if vi_2 is ancestor of vi_1, do not any calculations
+			if(boost::edge(*vi_2, *vi_1, myNet.m_net_graph).second) continue; //if edge already exists, do nothing
+			
+			double correlation = container_correlation(m_gradient[*vi_1],out_values[*vi_2]);
+			cout << *vi_2 << "	" << print_to_width(correlation) << "|";
+		}
+		cout << endl;
+	}
+		
 	for(auto egde_to_remove : egdes_to_remove)	boost::remove_edge(egde_to_remove, myNet.m_net_graph);
 	
 	//iterate over vertices and remove neurons without output edges

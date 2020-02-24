@@ -44,7 +44,7 @@ struct NeuronP {
    unsigned int output_signal;  //if we get from neuron corresponding output value
    double m_input_value;
    double m_outputVal;
-   double m_gradient;
+   double m_gradient; //gradient of loss function on input signal of given neuron
    template<class Archive>
    void serialize(Archive & ar, const unsigned int file_version){
 	   ar & tag;

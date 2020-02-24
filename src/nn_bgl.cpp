@@ -80,7 +80,7 @@ void Net::backProp(const std::vector<double> &targetVals, bool update_weights)
 			if (debug_low) cout << "Update gradients on outputs for neuron " << neuron->tag << endl;
 			double delta = 0;
 		    
-		    if(output_layer.find(topo_sorted[i]) != output_layer.end()){
+		    if(neuron->is_output){
 				//ok, we are in last layer of neurons - desired outputs are fixed from output values
 				delta = targetVals[output_layer.find(topo_sorted[i])->second] - neuron->m_outputVal;
 				if (debug_low) cout << "Out neuron, so update on delta_out targetVals[output_layer.find(topo_sorted[i])] =	" << targetVals[output_layer.find(topo_sorted[i])->second]  << "	neuron->m_outputVal = " << neuron->m_outputVal << "delta= " << delta << endl;			

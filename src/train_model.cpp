@@ -60,6 +60,7 @@ int main(int argc, char* argv[])
 	bool use_gnuplot = false;
 	std::string init_topology = "layers";
 	net_type type_of_network =  layers;
+	unsigned int epochs_max = 1000;
 
 	boost::program_options::options_description desc("Allowed options");
 	desc.add_options()
@@ -72,6 +73,7 @@ int main(int argc, char* argv[])
 	("output_final_dot,ofd", boost::program_options::value(&final_result_dot), "pathname prefix for final dot result")
 	("gnuplot,gp",  boost::program_options::bool_switch(&use_gnuplot), "use gnuplot dynamical plotting")
 	("init_topology,it",  boost::program_options::value(&init_topology), "initial topology: \n layers \n water_fall")
+	("epochs_max,em",  boost::program_options::value(&epochs_max), "number of epochs to train")
 	;
     
     boost::program_options::variables_map vm;
@@ -87,9 +89,9 @@ int main(int argc, char* argv[])
     if(vm.count("output_final_serialized")) final_result_serialized = vm["output_final_serialized"].as<std::string>();
     if(vm.count("output_final_dot")) final_result_dot = vm["output_final_dot"].as<std::string>();
     if(vm.count("init_topology")) init_topology = vm["init_topology"].as<std::string>();
-    
     if(!init_topology.compare("layers")) type_of_network =  layers;
     if(!init_topology.compare("water_fall")) type_of_network =  water_fall;
+    if(vm.count("epochs_max")) epochs_max = vm["epochs_max"].as<unsigned int>();
     
 	TrainingData trainData("train_data.txt");
 	TrainingData validateData("validate_data.txt");
@@ -104,7 +106,6 @@ int main(int argc, char* argv[])
 	
 	vector<double> inputVals, targetVals, resultVals;	
 	int trainingPass = 0;
-	int epochs_max = 1000;
 	
 	FILE *gp;
 	if(use_gnuplot){

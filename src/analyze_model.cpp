@@ -95,6 +95,20 @@ public:
    boost::shared_ptr< std::unordered_set<vertex_descriptor> > vv;
 };
 
+class parent_checker{
+public:
+	parent_checker(vertex_descriptor v, Graph g){		
+		auto indexmap = boost::get(boost::vertex_index, g);
+		auto colormap = boost::make_vector_property_map<boost::default_color_type>(indexmap);
+		boost::depth_first_visit(g, v, vis, colormap);
+	}
+	bool is_parent(vertex_descriptor v){
+		return( vis.vv->count(v)>0 );
+	}
+private:
+	dfs_counter_visitor vis;
+};
+
 int main(int argc, char* argv[])
 {
 	std::string input_file = "final_result_serialized.txt";
@@ -215,15 +229,11 @@ int main(int argc, char* argv[])
 	boost::graph_traits<Graph>::vertex_iterator vi_2, vi_end_2;
 	for (boost::tie(vi_1, vi_end_1) = boost::vertices(myNet.m_net_graph); vi_1 != vi_end_1; ++vi_1){
 		if(myNet.m_net_graph[*vi_1].is_input) continue; //ignore input neurons
-		dfs_counter_visitor vis;
-		auto indexmap = boost::get(boost::vertex_index, myNet.m_net_graph);
-		auto colormap = boost::make_vector_property_map<boost::default_color_type>(indexmap);
-		boost::depth_first_visit(myNet.m_net_graph, *vi_1, vis, colormap);
 		cout << *vi_1 << "||	";
+		parent_checker checker(*vi_1, myNet.m_net_graph);
 		for (boost::tie(vi_2, vi_end_2) = boost::vertices(myNet.m_net_graph); vi_2 != vi_end_2; ++vi_2){
-			if(vis.vv->count(*vi_2)>0) continue; //if vi_2 is ancestor of vi_1, do not any calculations
+			if(checker.is_parent(*vi_2)) continue; //if vi_2 is ancestor of vi_1, do not any calculations
 			if(boost::edge(*vi_2, *vi_1, myNet.m_net_graph).second) continue; //if edge already exists, do nothing
-			
 			double correlation = container_correlation(m_gradient[*vi_1],out_values[*vi_2]);
 			cout << *vi_2 << "	" << print_to_width(correlation) << "|";
 		}

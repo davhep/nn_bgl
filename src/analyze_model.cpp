@@ -218,9 +218,11 @@ int main(int argc, char* argv[])
 		
 		
 		//analyze correlation between gradients on the edge and output from other neuron
+		parent_checker checker(target, myNet.m_net_graph);
 		for (boost::tie(vi, vi_end) = boost::vertices(myNet.m_net_graph); vi != vi_end; ++vi){
+			if(checker.is_parent(*vi)) continue; //if vi is ancestor of edge target, do not any calculations
 			double correlation = container_correlation(out_values[*vi], m_deltas_vec);
-			if(fabs(correlation) > 0.15) cout << "Corellation with vertices: " <<  "| vi= " << *vi << "	corr=	" << correlation << " | " << endl;
+			if(fabs(correlation) > 0.15) cout << "Corellation with vertices: " <<  "| vi= " << myNet.m_net_graph[*vi].tag << "	corr=	" << correlation << " | " << endl;
 		}
 	}
 	
@@ -235,7 +237,12 @@ int main(int argc, char* argv[])
 			if(checker.is_parent(*vi_2)) continue; //if vi_2 is ancestor of vi_1, do not any calculations
 			if(boost::edge(*vi_2, *vi_1, myNet.m_net_graph).second) continue; //if edge already exists, do nothing
 			double correlation = container_correlation(m_gradient[*vi_1],out_values[*vi_2]);
-			cout << *vi_2 << "	" << print_to_width(correlation) << "|";
+			if(fabs(correlation) > 0.3){
+				cout << *vi_2 << "	" << print_to_width(correlation) << "|";
+				SinapsP sinaps;
+				sinaps.m_weight = double(rand() % 100)/100;
+				boost::add_edge(*vi_2, *vi_1, sinaps, myNet.m_net_graph);
+			}
 		}
 		cout << endl;
 	}

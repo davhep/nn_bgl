@@ -117,13 +117,15 @@ int main(int argc, char* argv[])
 		fflush(gp);
 	}
 	while(trainingPass <= epochs_max){
+		
 		myNet.eta = 100.0/(myNet.trainingPass+1000.0);
 		
 		double epoch_error = 0;
 		double epoch_average_error = 0;
 		unsigned int epoch_num_in = 0;
 		ofstream data_dump;
-		if(use_gnuplot){
+		bool do_gnuplot = use_gnuplot && !(trainingPass % 10);
+		if(do_gnuplot){
 			remove("model_vs_practice_dynamic.txt");
 			data_dump.open("model_vs_practice_dynamic.txt");
 		};
@@ -145,7 +147,7 @@ int main(int argc, char* argv[])
 				dumpVectorVals("resultVals	", data_dump, resultVals);
 				dumpVectorVals("targetVals	", data_dump, targetVals);
 			}
-			if(use_gnuplot){
+			if(do_gnuplot){
 				// Collect the net's actual results:
 				myNet.getResults(resultVals);
 				dumpVectorVals("inputVals	", data_dump, inputVals);
@@ -179,8 +181,9 @@ int main(int argc, char* argv[])
 			
 			epoch_average_error = epoch_error/epoch_num_in;
 			cerr << " validate error = " << epoch_average_error << endl;
+			saveModel(myNet, final_result_serialized, final_result_dot);	
 	    }
-		if(use_gnuplot){
+		if(do_gnuplot){
 			fprintf(gp, "reread\n");
 			fprintf(gp, "replot\n");
 			fflush(gp);

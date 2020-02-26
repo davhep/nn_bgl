@@ -18,7 +18,7 @@
 
 #include <boost/program_options.hpp>
 #include <unistd.h>
-
+//#include <cmath>
 #define debug_high false
 #define debug_low false
 
@@ -164,7 +164,7 @@ int main(int argc, char* argv[])
 			cout << "minimal error detected, model saved to files" << endl;
 	    }
 		
-		if(trainingPass % 10){
+		if(!(trainingPass % 10)){
 			epoch_error = 0;
 			epoch_num_in = 0;
 			while(validateData.get(inputVals, targetVals)){
@@ -190,7 +190,7 @@ int main(int argc, char* argv[])
 	    validateData.reset();
 	    
 	    ++trainingPass;
-	    
+	    ++myNet.trainingPass;
     }
 	saveModel(myNet, final_result_serialized, final_result_dot);	
 }

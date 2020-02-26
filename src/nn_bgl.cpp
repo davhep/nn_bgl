@@ -295,4 +295,5 @@ void Net::serialize(Archive & ar, const unsigned int file_version){
 	   ar & topo_sorted;
 	   ar & m_recentAverageError;
 	   ar & minimal_error;
+	   ar & trainingPass;
 }

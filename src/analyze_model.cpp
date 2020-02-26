@@ -240,7 +240,7 @@ int main(int argc, char* argv[])
 			if(fabs(correlation) > 0.3){
 				cout << *vi_2 << "	" << print_to_width(correlation) << "|";
 				SinapsP sinaps;
-				sinaps.m_weight = double(rand() % 100)/100;
+				sinaps.m_weight = 0;
 				boost::add_edge(*vi_2, *vi_1, sinaps, myNet.m_net_graph);
 			}
 		}

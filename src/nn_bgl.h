@@ -60,8 +60,8 @@ struct NeuronP {
 
 
 struct SinapsP {
-   double m_weight;
-   double m_delta_weight;
+   double m_weight=0.02;
+   double m_delta_weight=0;
    template<class Archive>
    void serialize(Archive & ar, const unsigned int file_version){
 	   ar & m_weight;
@@ -106,4 +106,5 @@ public:
 	
 	template<class Archive>
 	void serialize(Archive & ar, const unsigned int file_version);
+	unsigned int tag_max=0;
 };

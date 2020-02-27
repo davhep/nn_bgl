@@ -195,6 +195,7 @@ Net::Net(const vector<unsigned> &topology, net_type type_of_network)
 						neuron.output_signal = neuronNum;
 					}
 					auto vertex_new = boost::add_vertex(neuron, m_net_graph);
+					tag_max++;
 					for(unsigned neuronNum_prev = 0; neuronNum_prev < numInputs; neuronNum_prev++){
 						SinapsP sinaps;
 						sinaps.m_weight = double((neuronNum_prev+neuronNum) % 10)/10;
@@ -213,6 +214,7 @@ Net::Net(const vector<unsigned> &topology, net_type type_of_network)
 					NeuronP neuron;
 					neuron.tag = neuron_num;
 					auto vertex_new = boost::add_vertex(neuron, m_net_graph);
+					tag_max++;
 					if(neuron_num < topology[0]) //if we are in input layer, storage ouput tags
 						neuron.input_signal = neuron_num;
 					if( neuron_num >= (total_neurons - topology.back()) ) //if we are in output layer, storage ouput tags
@@ -296,4 +298,5 @@ void Net::serialize(Archive & ar, const unsigned int file_version){
 	   ar & m_recentAverageError;
 	   ar & minimal_error;
 	   ar & trainingPass;
+	   ar & tag_max;
 }

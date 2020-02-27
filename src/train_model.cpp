@@ -116,6 +116,7 @@ int main(int argc, char* argv[])
 		fprintf(gp, "splot 'model_vs_practice_dynamic.txt' u 2:3:5, 'model_vs_practice_dynamic.txt' u 2:3:7\n");
 		fflush(gp);
 	}
+	
 	while(trainingPass <= epochs_max){
 		
 		myNet.eta = 100.0/(myNet.trainingPass+1000.0);

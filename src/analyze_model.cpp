@@ -198,10 +198,20 @@ int main(int argc, char* argv[])
 	cout << "Averaged error = " << epoch_error/epoch_num_in << endl;
 	
 	//we try to analize and update model
-
+    
+    //to iterate over original myNet and modify myNet_modified to avoid inconsistencies in inerations
+    Net myNet_modified = myNet;
+    
 	std::vector<edge_descriptor> egdes_to_remove;
-	
 	//let`s iterate over synapses
+	
+	//potential neuron - no number for vertex, just two inputs - form two neurons and one output - to one neuron
+	struct potential_neuron{
+		vertex_descriptor input1, input2, output;
+		double correlation;
+	};
+	std::vector<potential_neuron> neurons_to_add;
+	
 	for (boost::tie(ei, ei_end) = boost::edges(myNet.m_net_graph); ei != ei_end; ++ei){
 		auto source = boost::source ( *ei, myNet.m_net_graph);
 		auto target = boost::target ( *ei, myNet.m_net_graph);
@@ -211,21 +221,44 @@ int main(int argc, char* argv[])
 		cout << source << " to " << target << " W= " << container_mean(weights_vec) << "	W_var= " << container_deviation(weights_vec) << "	d= " << container_mean(m_deltas_vec) << "	d_var=	" << container_deviation(m_deltas_vec) << " d_var/W= " << container_deviation(m_deltas_vec)/container_mean(weights_vec) << endl;
 		
 		// remove useless - with low weights
-		if(fabs(container_mean(weights_vec)) < 0.05){
+		if(fabs(container_mean(weights_vec)) < 0.02){
 			cout << "Removing edge!!!" << endl;
-			egdes_to_remove.push_back(*ei);
+			boost::remove_edge(source, target, myNet_modified.m_net_graph);
 		}
 		
 		
 		//analyze correlation between gradients on the edge and output from other neuron
+				
 		parent_checker checker(target, myNet.m_net_graph);
 		for (boost::tie(vi, vi_end) = boost::vertices(myNet.m_net_graph); vi != vi_end; ++vi){
-			if(checker.is_parent(*vi)) continue; //if vi is ancestor of edge target, do not any calculations
+			if(checker.is_parent(*vi) || *vi==source ) continue; //if vi is ancestor of edge target or equal to source, do not any calculations
 			double correlation = container_correlation(out_values[*vi], m_deltas_vec);
-			if(fabs(correlation) > 0.15) cout << "Corellation with vertices: " <<  "| vi= " << myNet.m_net_graph[*vi].tag << "	corr=	" << correlation << " | " << endl;
+			neurons_to_add.push_back(potential_neuron{*vi,source,target,correlation});
+			if(fabs(correlation) > 0) cout << "Corellation with vertices: " <<  "| vi= " << myNet.m_net_graph[*vi].tag << "	corr=	" << correlation << " | " << endl;
 		}
 	}
 	
+	std::sort(neurons_to_add.begin(), neurons_to_add.end(), [](potential_neuron a, potential_neuron b) {
+		return fabs(a.correlation) > fabs(b.correlation);
+	});
+	
+	for(auto neuron: neurons_to_add)
+		cout << myNet_modified.m_net_graph[neuron.input1].tag << "	"  << myNet_modified.m_net_graph[neuron.input2].tag << "	" << 
+			myNet_modified.m_net_graph[neuron.output].tag <<  "	"<< neuron.correlation << endl;
+	
+	int neurons_to_insert = 2;
+	for(int n=0; n < neurons_to_insert; n++){
+		NeuronP neuron_new;
+		neuron_new.tag = myNet_modified.tag_max++;
+		SinapsP sinaps_in1, sinaps_in2, sinaps_out;
+		auto neuron = neurons_to_add[n];
+		cout << myNet_modified.tag_max << "	" << neuron.input1 << "	" << neuron.input2 << "	" << neuron.output << endl;
+		auto vertex_new = boost::add_vertex(neuron_new, myNet_modified.m_net_graph);
+		boost::add_edge(neuron.input1, vertex_new, sinaps_in1, myNet_modified.m_net_graph);
+		boost::add_edge(neuron.input2, vertex_new, sinaps_in2, myNet_modified.m_net_graph);
+		boost::add_edge(vertex_new, neuron.output, sinaps_out, myNet_modified.m_net_graph);
+	}
+
 	//analyze correlation between gradients on the edge and output from other neuron
 	boost::graph_traits<Graph>::vertex_iterator vi_1, vi_end_1;
 	boost::graph_traits<Graph>::vertex_iterator vi_2, vi_end_2;
@@ -241,25 +274,28 @@ int main(int argc, char* argv[])
 				cout << *vi_2 << "	" << print_to_width(correlation) << "|";
 				SinapsP sinaps;
 				sinaps.m_weight = 0;
-				boost::add_edge(*vi_2, *vi_1, sinaps, myNet.m_net_graph);
+				boost::add_edge(*vi_2, *vi_1, sinaps, myNet_modified.m_net_graph);
 			}
 		}
 		cout << endl;
 	}
-		
-	for(auto egde_to_remove : egdes_to_remove)	boost::remove_edge(egde_to_remove, myNet.m_net_graph);
 	
-	//iterate over vertices and remove neurons without output edges
+
+	
+	// iterate over vertices and remove neurons without output edges
+	// this is the last procedure, because of after vertex removing there is no more way to math original and modified models
 	do{
-		boost::tie(vi, vi_end) = boost::vertices(myNet.m_net_graph);
+		boost::tie(vi, vi_end) = boost::vertices(myNet_modified.m_net_graph);
 		for (; vi != vi_end; ++vi){
-			if(myNet.m_net_graph[*vi].is_output) continue; //output neurons have no output connections at all, just inputs
-			typename boost::graph_traits<Graph>::out_edge_iterator ei, ei_end;
-			boost::tie(ei, ei_end) = out_edges(*vi, myNet.m_net_graph);
-			if(ei == ei_end){
-				cout << "Removing vertex " << *vi << "	with tag " << myNet.m_net_graph[*vi].tag << endl;
-				boost::clear_vertex(*vi, myNet.m_net_graph);
-				boost::remove_vertex(*vi, myNet.m_net_graph);
+			if(myNet_modified.m_net_graph[*vi].is_output || myNet_modified.m_net_graph[*vi].is_input) continue; //output neurons have no output connections at all, just inputs
+			typename boost::graph_traits<Graph>::in_edge_iterator ei, ei_end;
+			typename boost::graph_traits<Graph>::out_edge_iterator eo, eo_end;
+			boost::tie(ei, ei_end) = in_edges(*vi, myNet_modified.m_net_graph);
+			boost::tie(eo, eo_end) = out_edges(*vi, myNet_modified.m_net_graph);
+			if((ei == ei_end) || (eo == eo_end)){
+				cout << "Removing vertex " << *vi << "	with tag " << myNet_modified.m_net_graph[*vi].tag << endl;
+				boost::clear_vertex(*vi, myNet_modified.m_net_graph);
+				boost::remove_vertex(*vi, myNet_modified.m_net_graph);
 				//1) after clear - some output connections for over neurons can be deleted
 				//2) after remove_vertex - vertices re-numbered and iteration procedure invalidated 
 				//doc says: ... If the VertexList template parameter of the adjacency_list was vecS, then all vertex descriptors, edge descriptors, and iterators for the graph are invalidated by this operation. The builtin vertex_index_t property for each vertex is renumbered so that after the operation the vertex indices still form a contiguous range [0, num_vertices(g)). ...
@@ -269,7 +305,7 @@ int main(int argc, char* argv[])
 		}
 	}while(vi != vi_end);
 	
-	myNet.on_topology_update();
+	myNet_modified.on_topology_update();
 
-	saveModel(myNet, "updated_model.txt", "updated_model.dot");
+	saveModel(myNet_modified, "updated_model.txt", "updated_model.dot");
 }

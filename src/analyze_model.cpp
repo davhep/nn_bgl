@@ -210,7 +210,14 @@ int main(int argc, char* argv[])
 		vertex_descriptor input1, input2, output;
 		double correlation;
 	};
+	
+	struct potential_edge{
+		vertex_descriptor input, output;
+		double correlation;
+	};
+
 	std::vector<potential_neuron> neurons_to_add;
+	std::vector<potential_edge> edge_to_add;
 	
 	for (boost::tie(ei, ei_end) = boost::edges(myNet.m_net_graph); ei != ei_end; ++ei){
 		auto source = boost::source ( *ei, myNet.m_net_graph);
@@ -249,10 +256,10 @@ int main(int argc, char* argv[])
 	int neurons_to_insert = 2;
 	for(int n=0; n < neurons_to_insert; n++){
 		NeuronP neuron_new;
-		neuron_new.tag = myNet_modified.tag_max++;
+		neuron_new.tag = ++myNet_modified.tag_max;
 		SinapsP sinaps_in1, sinaps_in2, sinaps_out;
 		auto neuron = neurons_to_add[n];
-		cout << myNet_modified.tag_max << "	" << neuron.input1 << "	" << neuron.input2 << "	" << neuron.output << endl;
+		cout << "Creating neuron with tag " << neuron_new.tag << "	from " << neuron.input1 << " and " << neuron.input2 << " to " << neuron.output << endl;
 		auto vertex_new = boost::add_vertex(neuron_new, myNet_modified.m_net_graph);
 		boost::add_edge(neuron.input1, vertex_new, sinaps_in1, myNet_modified.m_net_graph);
 		boost::add_edge(neuron.input2, vertex_new, sinaps_in2, myNet_modified.m_net_graph);
@@ -265,20 +272,32 @@ int main(int argc, char* argv[])
 	for (boost::tie(vi_1, vi_end_1) = boost::vertices(myNet.m_net_graph); vi_1 != vi_end_1; ++vi_1){
 		if(myNet.m_net_graph[*vi_1].is_input) continue; //ignore input neurons
 		cout << *vi_1 << "||	";
-		parent_checker checker(*vi_1, myNet.m_net_graph);
+		parent_checker checker(*vi_1, myNet_modified.m_net_graph);
 		for (boost::tie(vi_2, vi_end_2) = boost::vertices(myNet.m_net_graph); vi_2 != vi_end_2; ++vi_2){
 			if(checker.is_parent(*vi_2)) continue; //if vi_2 is ancestor of vi_1, do not any calculations
 			if(boost::edge(*vi_2, *vi_1, myNet.m_net_graph).second) continue; //if edge already exists, do nothing
 			double correlation = container_correlation(m_gradient[*vi_1],out_values[*vi_2]);
-			if(fabs(correlation) > 0.3){
+			if(fabs(correlation) > 0){
 				cout << *vi_2 << "	" << print_to_width(correlation) << "|";
-				SinapsP sinaps;
-				sinaps.m_weight = 0;
-				boost::add_edge(*vi_2, *vi_1, sinaps, myNet_modified.m_net_graph);
+				edge_to_add.push_back(potential_edge{*vi_2, *vi_1, correlation});
+				
 			}
 		}
 		cout << endl;
 	}
+	
+	std::sort(edge_to_add.begin(), edge_to_add.end(), [](potential_edge a, potential_edge b) {
+			return fabs(a.correlation) > fabs(b.correlation);
+		});
+		
+	
+	int edges_to_insert = 2;
+	for(int n=0; n < edges_to_insert; n++){
+		SinapsP sinaps_new;
+		auto edge = edge_to_add[n];
+		cout << "Adding edge: from " << edge.input << "	to " << edge.output << endl;;
+		boost::add_edge(edge.input, edge.output, sinaps_new, myNet_modified.m_net_graph);
+	};
 	
 
 	
@@ -305,7 +324,9 @@ int main(int argc, char* argv[])
 		}
 	}while(vi != vi_end);
 	
+	saveModel(myNet_modified, "updated_model.txt", "updated_model.dot");
+	
 	myNet_modified.on_topology_update();
 
-	saveModel(myNet_modified, "updated_model.txt", "updated_model.dot");
+	//saveModel(myNet_modified, "updated_model.txt", "updated_model.dot");
 }

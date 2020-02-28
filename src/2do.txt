@@ -1,12 +1,13 @@
 2DO:
 * Find and digitize motivated theory
-* ok, adding synapses and neurons by correlation estimations
 * self-learning with out teacher
 * Continous variant of optimization - math.ph like )))
+* add MNIST interface
 
 DONE:
 
 * Visualize (2D surface animation) fitting progress
 * boost options
 * Control groupe checking (train vs control estimations)
+* ok, adding synapses and neurons by correlation estimations
 

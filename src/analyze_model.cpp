@@ -113,6 +113,7 @@ private:
 int main(int argc, char* argv[])
 {
 	std::string input_file = "final_result_serialized.txt";
+	std::string final_result_serialized = "final_result_serialized.txt";
 	vector<unsigned> topology={2,10,10,1};
 		
 	boost::program_options::options_description desc("Allowed options");
@@ -122,7 +123,8 @@ int main(int argc, char* argv[])
 	// The third is description
 	("help,h", "print usage message")
 	("input_file,if", boost::program_options::value(&input_file), "pathname for pre-trained filed to load and analyze")
-	("topology,t", boost::program_options::value<std::vector<unsigned> >()->multitoken(), "topology as layer sizes, say 2 10 10 1 default");
+	("topology,t", boost::program_options::value<std::vector<unsigned> >()->multitoken(), "topology as layer sizes, say 2 10 10 1 default")
+	("output_file_serialized,ofs", boost::program_options::value(&final_result_serialized), "pathname for final serialized result ")
 	;
 	
 	boost::program_options::variables_map vm;
@@ -331,7 +333,7 @@ int main(int argc, char* argv[])
 		}
 	}while(vi != vi_end);
 	
-	saveModel(myNet_modified, "updated_model.txt", "updated_model.dot");
+	saveModel(myNet_modified, final_result_serialized.c_str(), "updated_model.dot");
 	
 	myNet_modified.on_topology_update();
 

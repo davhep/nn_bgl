@@ -70,8 +70,8 @@ int main(int argc, char* argv[])
 	// The third is description
 	("help,h", "print usage message")
 	("input_file,if", boost::program_options::value(&input_file), "pathname for pre-trained filed to load and continue")
-	("output_final_serialized,ofs", boost::program_options::value(&final_result_serialized), "pathname for final serialized result ")
-	("output_final_dot,ofd", boost::program_options::value(&final_result_dot), "pathname prefix for final dot result")
+	("output_file_serialized,ofs", boost::program_options::value(&final_result_serialized), "pathname for final serialized result ")
+	("output_file_dot,ofd", boost::program_options::value(&final_result_dot), "pathname prefix for final dot result")
 	("gnuplot,gp",  boost::program_options::bool_switch(&use_gnuplot), "use gnuplot dynamical plotting")
 	("init_topology,it",  boost::program_options::value(&init_topology), "initial topology: \n layers \n water_fall")
 	("epochs_max,em",  boost::program_options::value(&epochs_max), "number of epochs to train")
@@ -88,7 +88,7 @@ int main(int argc, char* argv[])
 	}
     if(vm.count("gnuplot")) use_gnuplot = vm["gnuplot"].as<bool>();  
     if(vm.count("input_file")) input_file = vm["input_file"].as<std::string>();
-    if(vm.count("output_final_serialized")) final_result_serialized = vm["output_final_serialized"].as<std::string>();
+    if(vm.count("output_file_serialized")) final_result_serialized = vm["output_file_serialized"].as<std::string>();
     if(vm.count("output_final_dot")) final_result_dot = vm["output_final_dot"].as<std::string>();
     if(vm.count("init_topology")) init_topology = vm["init_topology"].as<std::string>();
     if(!init_topology.compare("layers")) type_of_network =  layers;

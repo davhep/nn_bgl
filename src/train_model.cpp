@@ -22,7 +22,8 @@
 #define debug_high false
 #define debug_low false
 
-void showVectorVals(string label, vector<double> &v)
+template<class num_type>
+void showVectorVals(string label, vector<num_type> &v)
 {
 	cout << label << " ";
 	for(unsigned i = 0; i < v.size(); ++i)
@@ -56,11 +57,11 @@ int main(int argc, char* argv[])
 	std::string input_file = "final_result_serialized.txt";
 	std::string final_result_serialized = "final_result_serialized.txt";
 	std::string final_result_dot = "final_result.dot";
-	std::string topology_file_name = "topology.txt";
 	bool use_gnuplot = false;
 	std::string init_topology = "layers";
 	net_type type_of_network =  layers;
 	unsigned int epochs_max = 1000;
+	vector<unsigned> topology={2,10,10,1};
 
 	boost::program_options::options_description desc("Allowed options");
 	desc.add_options()
@@ -74,6 +75,7 @@ int main(int argc, char* argv[])
 	("gnuplot,gp",  boost::program_options::bool_switch(&use_gnuplot), "use gnuplot dynamical plotting")
 	("init_topology,it",  boost::program_options::value(&init_topology), "initial topology: \n layers \n water_fall")
 	("epochs_max,em",  boost::program_options::value(&epochs_max), "number of epochs to train")
+    ("topology,t", boost::program_options::value<std::vector<unsigned> >()->multitoken(), "topology as layer sizes, say 2 10 10 1 default");
 	;
     
     boost::program_options::variables_map vm;
@@ -92,17 +94,19 @@ int main(int argc, char* argv[])
     if(!init_topology.compare("layers")) type_of_network =  layers;
     if(!init_topology.compare("water_fall")) type_of_network =  water_fall;
     if(vm.count("epochs_max")) epochs_max = vm["epochs_max"].as<unsigned int>();
-    
+    if (!vm["topology"].empty()) {
+		topology = vm["topology"].as<vector<unsigned> >();
+		showVectorVals("topology: ", topology);
+	};
+
 	TrainingData trainData("train_data.txt");
 	TrainingData validateData("validate_data.txt");
-	vector<unsigned> topology;	
-	trainData.getTopology(topology_file_name, topology);
-	
+		
 	Net myNet(topology, type_of_network);
 	saveModel(myNet, "init_serialized.txt",  "init.dot");
 	myNet.load(input_file);
 	myNet.on_topology_update();
-	cout << "myNet.minimal_error = " << myNet.minimal_error << endl;
+	cerr << "myNet.minimal_error = " << myNet.minimal_error << endl;
 	
 	vector<double> inputVals, targetVals, resultVals;	
 	int trainingPass = 0;
@@ -159,15 +163,16 @@ int main(int argc, char* argv[])
 		}
 		
 		epoch_average_error = epoch_error/epoch_num_in;
-		cerr << "At epoch " << trainingPass << " Net recent average error: " << epoch_average_error << endl;
+		
 	    
 	    if(epoch_average_error < myNet.minimal_error){
 			myNet.minimal_error = epoch_average_error;
 			saveModel(myNet, "best_result_serialized.txt",  "best_result.dot");
-			cout << "minimal error detected, model saved to files" << endl;
+			cerr << "minimal error detected " << myNet.minimal_error << " , model saved to files" << endl;
 	    }
 		
 		if(!(trainingPass % 10)){
+			cout << "At epoch " << myNet.trainingPass << " Net recent average error: " << epoch_average_error;
 			epoch_error = 0;
 			epoch_num_in = 0;
 			while(validateData.get(inputVals, targetVals)){
@@ -181,7 +186,7 @@ int main(int argc, char* argv[])
 			}
 			
 			epoch_average_error = epoch_error/epoch_num_in;
-			cerr << " validate error = " << epoch_average_error << endl;
+			cout << " validate error = " << epoch_average_error << endl;
 			saveModel(myNet, final_result_serialized, final_result_dot);	
 	    }
 		if(do_gnuplot){

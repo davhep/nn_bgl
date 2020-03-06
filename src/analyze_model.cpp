@@ -20,7 +20,8 @@
 #define debug_high false
 #define debug_low false
 
-void showVectorVals(string label, vector<double> &v)
+template<class num_type>
+void showVectorVals(string label, vector<num_type> &v)
 {
 	cout << label << " ";
 	for(unsigned i = 0; i < v.size(); ++i)
@@ -112,8 +113,8 @@ private:
 int main(int argc, char* argv[])
 {
 	std::string input_file = "final_result_serialized.txt";
-	std::string topology_file_name = "topology.txt";
-	
+	vector<unsigned> topology={2,10,10,1};
+		
 	boost::program_options::options_description desc("Allowed options");
 	desc.add_options()
 	// First parameter describes option name/short name
@@ -121,6 +122,7 @@ int main(int argc, char* argv[])
 	// The third is description
 	("help,h", "print usage message")
 	("input_file,if", boost::program_options::value(&input_file), "pathname for pre-trained filed to load and analyze")
+	("topology,t", boost::program_options::value<std::vector<unsigned> >()->multitoken(), "topology as layer sizes, say 2 10 10 1 default");
 	;
 	
 	boost::program_options::variables_map vm;
@@ -132,9 +134,13 @@ int main(int argc, char* argv[])
 	}
 	if(vm.count("input_file")) input_file = vm["input_file"].as<std::string>();
 	
+	if (!vm["topology"].empty()) {
+		topology = vm["topology"].as<vector<unsigned> >();
+		showVectorVals("topology: ", topology);
+	};
+	
 	TrainingData trainData("train_data.txt");
-	vector<unsigned> topology;	
-	trainData.getTopology(topology_file_name, topology);
+	
 	
 	Net myNet(topology);
 	cout << "Loading file " << input_file << endl;
@@ -144,6 +150,7 @@ int main(int argc, char* argv[])
 	vector<double> inputVals, targetVals, resultVals;	
 	int trainingPass = 0;
 	int epochs_max=1000;
+
 	
 	ofstream data_dump("model_vs_practice.txt");
 	// for gnuplotting by 

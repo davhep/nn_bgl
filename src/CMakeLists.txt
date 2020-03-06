@@ -15,3 +15,6 @@ include_directories(.)
 add_executable(train_model ${SOURCE_TRAIN})
 add_executable(analyze_model ${SOURCE_ANALYZE})
 add_executable(makeTrainingSamples makeTrainingSamples.cpp)
+
+#configure_file(scripts  scripts)
+file(COPY scripts DESTINATION .)

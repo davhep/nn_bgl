@@ -8,31 +8,6 @@ void TrainingData::reset(void)
 	m_trainingDataFile.seekg (0);
 }
 
-void TrainingData::getTopology(std::string topology_file_name, vector<unsigned> &topology)
-{
-	string line;
-	string label;
-	
-	ifstream topology_file(topology_file_name);
-	getline(topology_file, line);
-	topology_file.close();
-	
-	stringstream ss(line);
-	ss >> label;
-	if(this->isEof() || label.compare("topology:") != 0)
-	{
-		abort();
-	}
-
-	while(!ss.eof())
-	{
-		unsigned n;
-		ss >> n;
-		topology.push_back(n);
-	}
-	return;
-}
-
 TrainingData::TrainingData(const string filename)
 {
 	m_trainingDataFile.open(filename.c_str());

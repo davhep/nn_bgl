@@ -22,9 +22,7 @@ public:
 	bool isEof(void)
 	{
 		return m_trainingDataFile.eof();
-	}
-	void getTopology(std::string topology_file_name, vector<unsigned> &topology);
-	
+	}	
 	// Returns the number of input values read from the file:
 	unsigned getNextInputs(vector<double> &inputVals);
 	unsigned getTargetOutputs(vector<double> &targetOutputVals);

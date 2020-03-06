@@ -21,11 +21,11 @@ double Net::transferFunctionDerivative(double x)
 
 void Net::dump(std::string label)
 {/*
-	cout << label;
+	cerr <<label;
 	for(unsigned layerNum = 0; layerNum < m_layers.size(); ++layerNum){
 		for(unsigned n = 0; n < m_layers[layerNum].size(); ++n){
-			cout << "	layerNum= " << layerNum << "	neuronNum= " << n << "	outputValue= " << m_layers[layerNum][n].getOutputVal();
-			for(auto connection: m_layers[layerNum][n].m_outputWeights) cout << "	Weight: " << connection.weight << "	deltaWeight: " << connection.deltaWeight;
+			cerr <<"	layerNum= " << layerNum << "	neuronNum= " << n << "	outputValue= " << m_layers[layerNum][n].getOutputVal();
+			for(auto connection: m_layers[layerNum][n].m_outputWeights) cerr <<"	Weight: " << connection.weight << "	deltaWeight: " << connection.deltaWeight;
 			//auto neuron_dump = m_layers[layerNum][n].dump();
 			//m_dump.push_back(m_layers[layerNum][n]);
 		}
@@ -54,8 +54,8 @@ void Net::backProp(const std::vector<double> &targetVals, bool update_weights)
 		double delta = targetVals[ output_layer_element.second ] - m_net_graph[output_layer_element.first].m_outputVal;
 		m_error += delta *delta;
 		if(debug_low){
-		cout << "output_layer_element.second= " << output_layer_element.second << "	output_layer_element.first.tag= " << m_net_graph[output_layer_element.first].tag << endl;
-		cout << "targetVals[ output_layer_element.second ] = " << targetVals[ output_layer_element.second ] << "	m_net_graph[output_layer_element.first].m_outputVal= " << m_net_graph[output_layer_element.first].m_outputVal << endl;
+		cerr <<"output_layer_element.second= " << output_layer_element.second << "	output_layer_element.first.tag= " << m_net_graph[output_layer_element.first].tag << endl;
+		cerr <<"targetVals[ output_layer_element.second ] = " << targetVals[ output_layer_element.second ] << "	m_net_graph[output_layer_element.first].m_outputVal= " << m_net_graph[output_layer_element.first].m_outputVal << endl;
 	}
 	}
 	
@@ -71,36 +71,36 @@ void Net::backProp(const std::vector<double> &targetVals, bool update_weights)
 	m_recentAverageError = m_error;
 	
 	    if(debug_low){
-			cout << "m_recentAverageError =  (m_recentAverageError * m_recentAverageSmoothingFactor + m_error) / (m_recentAverageSmoothingFactor + 1.0);" << endl;
-			cout << m_recentAverageError << "	" << m_recentAverageError << "	" << m_recentAverageSmoothingFactor << "	" << m_error << "	" << m_recentAverageSmoothingFactor << endl;
+			cerr <<"m_recentAverageError =  (m_recentAverageError * m_recentAverageSmoothingFactor + m_error) / (m_recentAverageSmoothingFactor + 1.0);" << endl;
+			cerr <<m_recentAverageError << "	" << m_recentAverageError << "	" << m_recentAverageSmoothingFactor << "	" << m_error << "	" << m_recentAverageSmoothingFactor << endl;
 		}
 	   	for (int i = topo_sorted.size() - 1; i >= 0; i--){
 			//reverse topological order
 			auto neuron = &m_net_graph[topo_sorted[i]];
-			if (debug_low) cout << "Update gradients on outputs for neuron " << neuron->tag << endl;
+			if (debug_low) cerr <<"Update gradients on outputs for neuron " << neuron->tag << endl;
 			double delta = 0;
 		    
 		    if(neuron->is_output){
 				//ok, we are in last layer of neurons - desired outputs are fixed from output values
 				delta = targetVals[output_layer.find(topo_sorted[i])->second] - neuron->m_outputVal;
-				if (debug_low) cout << "Out neuron, so update on delta_out targetVals[output_layer.find(topo_sorted[i])] =	" << targetVals[output_layer.find(topo_sorted[i])->second]  << "	neuron->m_outputVal = " << neuron->m_outputVal << "delta= " << delta << endl;			
+				if (debug_low) cerr <<"Out neuron, so update on delta_out targetVals[output_layer.find(topo_sorted[i])] =	" << targetVals[output_layer.find(topo_sorted[i])->second]  << "	neuron->m_outputVal = " << neuron->m_outputVal << "delta= " << delta << endl;			
 			}
 			else
 			{
 				typename boost::graph_traits<Graph>::out_edge_iterator ei, ei_end;
-				if (debug_low) cout << "Update hidden layer neuron" << endl;
+				if (debug_low) cerr <<"Update hidden layer neuron" << endl;
 			    for (boost::tie(ei, ei_end) = out_edges(topo_sorted[i], m_net_graph); ei != ei_end; ++ei){
 					auto source = boost::source ( *ei, m_net_graph);
 					auto target = boost::target ( *ei, m_net_graph );
 					delta += m_net_graph[*ei].m_weight * m_net_graph[target].m_gradient;
-					if (debug_low) cout << "target neuron " << m_net_graph[target].tag << " sm_net_graph[*ei].m_weight =	" << m_net_graph[*ei].m_weight  << "	m_net_graph[target].m_gradient = " << m_net_graph[target].m_gradient << endl;
+					if (debug_low) cerr <<"target neuron " << m_net_graph[target].tag << " sm_net_graph[*ei].m_weight =	" << m_net_graph[*ei].m_weight  << "	m_net_graph[target].m_gradient = " << m_net_graph[target].m_gradient << endl;
 				}
 			}
 			
 			neuron->m_gradient = delta * transferFunctionDerivative(neuron->m_outputVal);
-			if (debug_low) cout << "neuron->m_outputVal=	" << neuron->m_outputVal << endl;
-			if (debug_low) cout << "delta=	" << delta  << "	transferFunctionDerivative(neuron->m_outputVal)= " << transferFunctionDerivative(neuron->m_outputVal) << endl;
-			if (debug_low) cout << "neuron->tag=	" << neuron->tag  << "	neuron->m_gradient= " << neuron->m_gradient << endl;			
+			if (debug_low) cerr <<"neuron->m_outputVal=	" << neuron->m_outputVal << endl;
+			if (debug_low) cerr <<"delta=	" << delta  << "	transferFunctionDerivative(neuron->m_outputVal)= " << transferFunctionDerivative(neuron->m_outputVal) << endl;
+			if (debug_low) cerr <<"neuron->tag=	" << neuron->tag  << "	neuron->m_gradient= " << neuron->m_gradient << endl;			
 	     }
    
    
@@ -113,7 +113,7 @@ void Net::backProp(const std::vector<double> &targetVals, bool update_weights)
 				auto target = boost::target ( *ei, m_net_graph );
 				m_net_graph[*ei].m_delta_weight = eta * m_net_graph[source].m_outputVal * m_net_graph[target].m_gradient;
 				if (update_weights) m_net_graph[*ei].m_weight += m_net_graph[*ei].m_delta_weight;
-				if (debug_low) cout << "Wij " << m_net_graph[source].tag << "	to " << m_net_graph[target].tag << " updated for " << m_net_graph[*ei].m_delta_weight << endl;
+				if (debug_low) cerr <<"Wij " << m_net_graph[source].tag << "	to " << m_net_graph[target].tag << " updated for " << m_net_graph[*ei].m_delta_weight << endl;
 			}
 		}		 
 }
@@ -127,11 +127,11 @@ void Net::feedForward(const vector<double> &inputVals)
 	for (int i = 0; i < topo_sorted.size(); i++){
 		auto vertex = topo_sorted[i];
 		auto neuron = &m_net_graph[vertex];
-		if(debug_low) cout << "Processing neuron " << neuron->tag << endl;
+		if(debug_low) cerr <<"Processing neuron " << neuron->tag << endl;
 		
 		if(neuron->is_input){
 			neuron->m_outputVal = inputVals[neuron->input_signal];
-			if(debug_low) cout << "inputVals[neuron.input_signal]= " << inputVals[neuron->input_signal] << endl;
+			if(debug_low) cerr <<"inputVals[neuron.input_signal]= " << inputVals[neuron->input_signal] << endl;
 		}
 		else
 		{
@@ -141,11 +141,11 @@ void Net::feedForward(const vector<double> &inputVals)
 				auto source = boost::source ( *ei, m_net_graph);
 				auto target = boost::target ( *ei, m_net_graph );
 				neuron->m_input_value += m_net_graph[*ei].m_weight * m_net_graph[source].m_outputVal;
-				if(debug_low) cout << "m_net_graph[*ei].m_weight = " << m_net_graph[*ei].m_weight << " m_net_graph[source].m_outputVal= " <<  m_net_graph[source].m_outputVal << " neuron->m_input_value= " << neuron->m_input_value << endl;
+				if(debug_low) cerr <<"m_net_graph[*ei].m_weight = " << m_net_graph[*ei].m_weight << " m_net_graph[source].m_outputVal= " <<  m_net_graph[source].m_outputVal << " neuron->m_input_value= " << neuron->m_input_value << endl;
 				}
 			neuron->m_outputVal = transferFunction(neuron->m_input_value);
 		}
-		if(debug_low) cout << "neuron->m_outputVal = " << neuron->m_outputVal << endl;
+		if(debug_low) cerr <<"neuron->m_outputVal = " << neuron->m_outputVal << endl;
    }
 }
 
@@ -155,9 +155,9 @@ void Net::on_topology_update(){
 	//we have to recalculate toloplogical order of vertices for correct forward/backward procedure
 	topo_sorted.clear();
 	boost::topological_sort(m_net_graph, std::front_inserter(topo_sorted));
-	cout << "A topological ordering: ";
-    for (int i = 0; i < topo_sorted.size(); i++) cout << m_net_graph[topo_sorted[i]].tag  << " ";
-    cout << endl;
+	cerr <<"A topological ordering: ";
+    for (int i = 0; i < topo_sorted.size(); i++) cerr <<m_net_graph[topo_sorted[i]].tag  << " ";
+    cerr <<endl;
     
     //because of re-numbering vertices after remove vertices, we have to update output/input lists
     input_layer.clear();
@@ -207,10 +207,10 @@ Net::Net(const vector<unsigned> &topology, net_type type_of_network)
 		break;
 		case(water_fall):
 			unsigned int total_neurons = std::accumulate(topology.begin(), topology.end(), 0);
-			cout << "Total neurons: " << total_neurons << endl;
+			cerr <<"Total neurons: " << total_neurons << endl;
 			std::vector<unsigned int> neuron_in;
 			for(int neuron_num = 0; neuron_num < total_neurons; neuron_num++){
-					cout << "generating neuron " << neuron_num << endl;
+					cerr <<"generating neuron " << neuron_num << endl;
 					NeuronP neuron;
 					neuron.tag = neuron_num;
 					auto vertex_new = boost::add_vertex(neuron, m_net_graph);
@@ -225,7 +225,7 @@ Net::Net(const vector<unsigned> &topology, net_type type_of_network)
 						int n_max=4;//how many neurons output connect to this neuron input
 						for(int n=0;(n< n_max) && (n<neuron_num);n++){
 							unsigned int input_neuron = neuron_in[n];
-							cout << "input neuron= " << input_neuron << endl;
+							cerr <<"input neuron= " << input_neuron << endl;
 							SinapsP sinaps;
 							sinaps.m_weight = double(rand() % 100)/100;
 							boost::add_edge(input_neuron, neuron_num, sinaps, m_net_graph);
@@ -241,7 +241,7 @@ Net::Net(const vector<unsigned> &topology, net_type type_of_network)
 				auto out_edges = boost::out_edges(*v, m_net_graph);
 		        if(out_edges.first == out_edges.second){
 					for(auto outer_neuron: output_layer){
-						cout << *v << "	" << outer_neuron.first << endl;
+						cerr <<*v << "	" << outer_neuron.first << endl;
 						SinapsP sinaps;
 						sinaps.m_weight = double(rand() % 100)/100;
 						boost::add_edge( *v, outer_neuron.first, sinaps, m_net_graph);
@@ -264,9 +264,9 @@ void Net::save( std::string path){
 void Net::load( std::string path){
 	std::ifstream file{path};
 	if(file){
-		cout << "Loading Net ..." << endl;
+		cerr <<"Loading Net ..." << endl;
 		if(debug_low){
-			cout << "topo size before: " << topo_sorted.size()
+			cerr <<"topo size before: " << topo_sorted.size()
 				<< "	edges size before: " << boost::num_edges(m_net_graph)
 				<< "	vertexes size before: " << boost::num_vertices(m_net_graph) << endl;
 		}
@@ -277,12 +277,12 @@ void Net::load( std::string path){
 		}
 		catch(int a)
 		{
-		  cout << "Loading faild. Caught exception number:  " << a << endl;
+		  cerr <<"Loading faild. Caught exception number:  " << a << endl;
 		  return;
 		}
 		
 		if(debug_low){
-			cout << "topo size after: " << topo_sorted.size()
+			cerr <<"topo size after: " << topo_sorted.size()
 				<< "	edges size after: " << boost::num_edges(m_net_graph)
 				<< "	vertexes size after: " << boost::num_vertices(m_net_graph) << endl;
 		}

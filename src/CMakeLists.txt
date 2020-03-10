@@ -17,4 +17,4 @@ add_executable(analyze_model ${SOURCE_ANALYZE})
 add_executable(makeTrainingSamples makeTrainingSamples.cpp)
 
 #configure_file(scripts  scripts)
-file(COPY scripts DESTINATION .)
+file(COPY run_test.sh DESTINATION .)

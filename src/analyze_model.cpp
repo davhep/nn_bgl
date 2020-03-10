@@ -141,6 +141,8 @@ int main(int argc, char* argv[])
 		showVectorVals("topology: ", topology);
 	};
 	
+	if(vm.count("output_file_serialized")) final_result_serialized = vm["output_file_serialized"].as<std::string>();
+	
 	TrainingData trainData("train_data.txt");
 	
 	
@@ -333,9 +335,7 @@ int main(int argc, char* argv[])
 		}
 	}while(vi != vi_end);
 	
-	saveModel(myNet_modified, final_result_serialized.c_str(), "updated_model.dot");
-	
 	myNet_modified.on_topology_update();
-
-	//saveModel(myNet_modified, "updated_model.txt", "updated_model.dot");
+	
+	saveModel(myNet_modified, final_result_serialized.c_str(), "updated_model.dot");
 }

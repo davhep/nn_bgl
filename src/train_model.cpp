@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
     if(vm.count("gnuplot")) use_gnuplot = vm["gnuplot"].as<bool>();  
     if(vm.count("input_file")) input_file = vm["input_file"].as<std::string>();
     if(vm.count("output_file_serialized")) final_result_serialized = vm["output_file_serialized"].as<std::string>();
-    if(vm.count("output_final_dot")) final_result_dot = vm["output_final_dot"].as<std::string>();
+    if(vm.count("output_file_dot")) final_result_dot = vm["output_file_dot"].as<std::string>();
     if(vm.count("init_topology")) init_topology = vm["init_topology"].as<std::string>();
     if(!init_topology.compare("layers")) type_of_network =  layers;
     if(!init_topology.compare("water_fall")) type_of_network =  water_fall;
@@ -168,7 +168,7 @@ int main(int argc, char* argv[])
 	    if(epoch_average_error < myNet.minimal_error){
 			myNet.minimal_error = epoch_average_error;
 			saveModel(myNet, "best_result_serialized.txt",  "best_result.dot");
-			cerr << "minimal error detected " << myNet.minimal_error << " , model saved to files" << endl;
+			//cerr << "minimal error detected " << myNet.minimal_error << " , model saved to files" << endl;
 	    }
 		
 		if(!(trainingPass % 10)){

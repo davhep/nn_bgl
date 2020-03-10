@@ -3,6 +3,8 @@
 * self-learning with out teacher
 * Continous variant of optimization - math.ph like )))
 * add MNIST interface
+* Bug !!! - in analyze_model non-DAG result graph rarely comes
+    2 6 6 1 configuration, update each 500 iterations
 
 DONE:
 

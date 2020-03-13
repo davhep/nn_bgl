@@ -270,7 +270,7 @@ int main(int argc, char* argv[])
 		neuron_new.tag = ++myNet_modified.tag_max;
 		SinapsP sinaps_in1, sinaps_in2, sinaps_out;
 		auto neuron = neurons_to_add[n];
-		cout << "Creating neuron with tag " << neuron_new.tag << "	from " << neuron.input1 << " and " << neuron.input2 << " to " << neuron.output << endl;
+		cout << "Creating neuron with tag " << neuron_new.tag << "	from " << myNet.m_net_graph[neuron.input1].tag << " and " << myNet.m_net_graph[neuron.input2].tag << " to " << myNet.m_net_graph[neuron.output].tag << endl;
 		auto vertex_new = boost::add_vertex(neuron_new, myNet_modified.m_net_graph);
 		boost::add_edge(neuron.input1, vertex_new, sinaps_in1, myNet_modified.m_net_graph);
 		boost::add_edge(neuron.input2, vertex_new, sinaps_in2, myNet_modified.m_net_graph);
@@ -303,11 +303,15 @@ int main(int argc, char* argv[])
 		
 	
 	int edges_to_insert = 2;
-	for(int n=0; n < edges_to_insert; n++){
-		SinapsP sinaps_new;
+	for(int n=0; edges_to_insert>0 && n<edge_to_add.size(); n++){
 		auto edge = edge_to_add[n];
-		cout << "Adding edge: from " << edge.input << "	to " << edge.output << endl;;
-		boost::add_edge(edge.input, edge.output, sinaps_new, myNet_modified.m_net_graph);
+		parent_checker checker(edge.output, myNet_modified.m_net_graph);
+		if(!checker.is_parent(edge.input)){
+			SinapsP sinaps_new;
+			cout << "Adding edge: from " << myNet.m_net_graph[edge.input].tag << "	to " << myNet.m_net_graph[edge.output].tag << endl;;
+			boost::add_edge(edge.input, edge.output, sinaps_new, myNet_modified.m_net_graph);
+			edges_to_insert--;
+		}
 	};
 	
 

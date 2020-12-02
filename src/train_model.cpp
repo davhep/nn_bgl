@@ -62,6 +62,7 @@ int main(int argc, char* argv[])
 	net_type type_of_network =  layers;
 	unsigned int epochs_max = 1000;
 	vector<unsigned> topology={2,10,10,1};
+	double learn_rate=1;
 
 	boost::program_options::options_description desc("Allowed options");
 	desc.add_options()
@@ -75,8 +76,8 @@ int main(int argc, char* argv[])
 	("gnuplot,gp",  boost::program_options::bool_switch(&use_gnuplot), "use gnuplot dynamical plotting")
 	("init_topology,it",  boost::program_options::value(&init_topology), "initial topology: \n layers \n water_fall")
 	("epochs_max,em",  boost::program_options::value(&epochs_max), "number of epochs to train")
-    ("topology,t", boost::program_options::value<std::vector<unsigned> >()->multitoken(), "topology as layer sizes, say 2 10 10 1 default");
-	;
+    ("topology,t", boost::program_options::value<std::vector<unsigned> >()->multitoken(), "topology as layer sizes, say 2 10 10 1 default")
+    ("learn_rate,lr",  boost::program_options::value(&learn_rate), "learn rate fit coefficient");
     
     boost::program_options::variables_map vm;
     boost::program_options::store(parse_command_line(argc, argv, desc), vm);
@@ -98,6 +99,7 @@ int main(int argc, char* argv[])
 		topology = vm["topology"].as<vector<unsigned> >();
 		showVectorVals("topology: ", topology);
 	};
+	if(vm.count("learn_rate")) learn_rate = vm["learn_rate"].as<double>();
 
 	TrainingData trainData("train_data.txt");
 	TrainingData validateData("validate_data.txt");
@@ -123,7 +125,7 @@ int main(int argc, char* argv[])
 	
 	while(trainingPass <= epochs_max){
 		
-		myNet.eta = 100.0/(myNet.trainingPass+1000.0);
+		myNet.eta = 100.0*learn_rate/(myNet.trainingPass+1000.0);
 		
 		double epoch_error = 0;
 		double epoch_average_error = 0;

@@ -1,4 +1,6 @@
 2DO:
+* fast estimate added edges, optimal weight on training anasble with all other weights freezed
+* fast estimate added neurons, two input weights and on e  output weight, the same procedure
 * Find and digitize motivated theory
 * self-learning with out teacher
 * Continous variant of optimization - math.ph like )))

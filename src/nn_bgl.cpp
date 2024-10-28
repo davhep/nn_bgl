@@ -122,7 +122,7 @@ void Net::backProp(const std::vector<double> &targetVals, bool update_weights)
 
 void Net::feedForward(const vector<double> &inputVals)
 {
-	assert(input_layer.size() == inputVals.size());
+       assert(input_layer.size() == inputVals.size());
 	
 	for (int i = 0; i < topo_sorted.size(); i++){
 		auto vertex = topo_sorted[i];
@@ -184,6 +184,7 @@ Net::Net(const vector<unsigned> &topology, net_type type_of_network)
 				for(unsigned neuronNum = 0; neuronNum < topology[layerNum]; ++neuronNum){
 					NeuronP neuron;
 					neuron.tag = neurons_total;
+                    tag_max = neuron.tag;
 					if(layerNum == 0){
 						//if we are in input layer, storage ouput tags
 						neuron.is_input = true;
@@ -195,7 +196,7 @@ Net::Net(const vector<unsigned> &topology, net_type type_of_network)
 						neuron.output_signal = neuronNum;
 					}
 					auto vertex_new = boost::add_vertex(neuron, m_net_graph);
-					tag_max++;
+
 					for(unsigned neuronNum_prev = 0; neuronNum_prev < numInputs; neuronNum_prev++){
 						SinapsP sinaps;
 						sinaps.m_weight = double((neuronNum_prev+neuronNum) % 10)/10;

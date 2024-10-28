@@ -14,7 +14,7 @@
 #include <iterator>
 
 #include <./nn_bgl.h>
-#include <./training_data.h>
+#include <./training_data_human.h>
 #include <boost/program_options.hpp>
 
 #define debug_high false
@@ -143,7 +143,8 @@ int main(int argc, char* argv[])
 	
 	if(vm.count("output_file_serialized")) final_result_serialized = vm["output_file_serialized"].as<std::string>();
 	
-	TrainingData trainData("train_data.txt");
+	TrainingDataHuman trainData;
+	trainData.InitFile("train_data.txt");
 	
 	
 	Net myNet(topology);
@@ -214,6 +215,7 @@ int main(int argc, char* argv[])
     Net myNet_modified = myNet;
     
 	std::vector<edge_descriptor> egdes_to_remove;
+
 	//let`s iterate over synapses
 	
 	//potential neuron - no number for vertex, just two inputs - form two neurons and one output - to one neuron
@@ -241,7 +243,9 @@ int main(int argc, char* argv[])
 		// remove useless - with low weights
 		if(fabs(container_mean(weights_vec)) < 0.02){
 			cout << "Removing edge!!!" << endl;
+            egdes_to_remove.push_back(*ei);
 			boost::remove_edge(source, target, myNet_modified.m_net_graph);
+            continue;
 		}
 		
 		

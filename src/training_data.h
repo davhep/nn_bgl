@@ -1,33 +1,16 @@
 #include <vector>
 #include <iostream>
-#include <cstdlib>
-#include <cassert>
-#include <cmath>
-#include <fstream>
-#include <sstream>
-#include <map>  
-#include <numeric>
-
-#include <iostream>
-#include <fstream>
-
-#include <iterator>
 
 using namespace std;
 
-class TrainingData
-{
+class TrainingData{
 public:
-	TrainingData(const string filename);
-	bool isEof(void)
-	{
-		return m_trainingDataFile.eof();
-	}	
-	// Returns the number of input values read from the file:
-	unsigned getNextInputs(vector<double> &inputVals);
-	unsigned getTargetOutputs(vector<double> &targetOutputVals);
-	unsigned get(vector<double> &inputVals, vector<double> &targetOutputVals);
-    void reset(void); 
-private:
-	ifstream m_trainingDataFile;
+	virtual bool isEof(void)=0;
+	virtual void getNextInputs(vector<double> &inputVals)=0;
+	virtual void getTargetOutputs(vector<double> &targetOutputVals)=0;
+	void get(vector<double> &inputVals, vector<double> &targetOutputVals){
+		getNextInputs(inputVals);
+		getTargetOutputs(targetOutputVals);
+	};
+    virtual void reset(void)=0; 
 };

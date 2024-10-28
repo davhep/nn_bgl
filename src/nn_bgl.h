@@ -30,7 +30,6 @@
 #include <algorithm>
 #include <chrono>
 
-#define debug_high false
 #define debug_low false
 
 using namespace std;

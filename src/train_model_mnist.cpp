@@ -14,12 +14,12 @@
 #include <iterator>
 
 #include <./nn_bgl.h>
-#include <./training_data_human.h>
+#include <./training_data_mnist.h>
 
 #include <boost/program_options.hpp>
 #include <unistd.h>
 //#include <cmath>
-#define debug_high false
+#define debug_high true
 #define debug_low false
 
 template<class num_type>
@@ -55,14 +55,13 @@ void dumpVectorVals(string label, ofstream &data_dump, vector<double> &v)
 int main(int argc, char* argv[])
 {
 	std::string input_file = "final_result_serialized.txt";
-    std::string final_result_serialized = "final_result_serialized1.txt";
+	std::string final_result_serialized = "final_result_serialized.txt";
 	std::string final_result_dot = "final_result.dot";
 	bool use_gnuplot = false;
 	std::string init_topology = "layers";
 	net_type type_of_network =  layers;
 	unsigned int epochs_max = 1000;
-    //vector<unsigned> topology={2,10,10,1};
-    vector<unsigned> topology={2, 6, 6, 1};
+	vector<unsigned> topology={784,10};
 	double learn_rate=1;
 
 	boost::program_options::options_description desc("Allowed options");
@@ -102,25 +101,19 @@ int main(int argc, char* argv[])
 	};
 	if(vm.count("learn_rate")) learn_rate = vm["learn_rate"].as<double>();
 
-	TrainingDataHuman trainData;
-	trainData.InitFile("train_data.txt");
-	TrainingDataHuman validateData;
-	validateData.InitFile("validate_data.txt");
+	TrainingDataMnist trainData;
+	trainData.InitFile("mnist/t10k-images.idx3-ubyte", "mnist/t10k-labels.idx1-ubyte");
+	TrainingDataMnist validateData;
+	validateData.InitFile("mnist/train-images.idx3-ubyte", "mnist/train-labels.idx1-ubyte");
 		
 	Net myNet(topology, type_of_network);
-    Net myNet_minimal(topology, type_of_network);
 	saveModel(myNet, "init_serialized.txt",  "init.dot");
 	myNet.load(input_file);
 	myNet.on_topology_update();
 	cerr << "myNet.minimal_error = " << myNet.minimal_error << endl;
-
-    vector<std::pair<vector<double>, vector<double>>> input_output_vals;
-    vector<std::pair<vector<double>, vector<double>>> input_output_validate_vals;
-    vector<double> resultVals;
-    trainData.ReadAllFromFile(input_output_vals, myNet.input_layer.size(), myNet.output_layer.size());
-    validateData.ReadAllFromFile(input_output_validate_vals, myNet.input_layer.size(), myNet.output_layer.size());
-
-    int trainingPass = 0;
+	
+	vector<double> inputVals, targetVals, resultVals;	
+	int trainingPass = 0;
 	
 	FILE *gp;
 	if(use_gnuplot){
@@ -131,8 +124,6 @@ int main(int argc, char* argv[])
 		fprintf(gp, "splot 'model_vs_practice_dynamic.txt' u 2:3:5, 'model_vs_practice_dynamic.txt' u 2:3:7\n");
 		fflush(gp);
 	}
-
-
 	
 	while(trainingPass <= epochs_max){
 		
@@ -150,32 +141,52 @@ int main(int argc, char* argv[])
 		
 	    // for gnuplotting by 
 	    // splot 'model_vs_practice.txt' u 2:3:7, 'model_vs_practice.txt' u 2:3:7
-
-        for (auto data : input_output_vals){
-            myNet.feedForward(data.first);
+	
+		while(!trainData.isEof()){
+			// Get new input data and feed it forward:
+			trainData.get(inputVals, targetVals);
+			assert(inputVals.size() == myNet.input_layer.size());
+			assert(targetVals.size() == myNet.output_layer.size());
+			myNet.feedForward(inputVals);	
 			// Train the net what the outputs should have been:
-            myNet.backProp(data.second, !(trainingPass == epochs_max)); //if last epoch, do not update weight, just calculate error
+			myNet.backProp(targetVals, !(trainingPass == epochs_max)); //if last epoch, do not update weight, just calculate error	
 			epoch_num_in++;
 			epoch_error += myNet.getRecentAverageError();
+			if(debug_high){
+				dumpVectorVals("inputVals	", data_dump, inputVals);
+				dumpVectorVals("resultVals	", data_dump, resultVals);
+				dumpVectorVals("targetVals	", data_dump, targetVals);
+			}
+			if(do_gnuplot){
+				// Collect the net's actual results:
+				myNet.getResults(resultVals);
+				dumpVectorVals("inputVals	", data_dump, inputVals);
+				dumpVectorVals("resultVals	", data_dump, resultVals);
+				dumpVectorVals("targetVals	", data_dump, targetVals);
+				data_dump << endl;
+		    }
 		}
-
+		
 		epoch_average_error = epoch_error/epoch_num_in;
+		
 	    
 	    if(epoch_average_error < myNet.minimal_error){
 			myNet.minimal_error = epoch_average_error;
-            myNet_minimal = myNet;
-            //saveModel(myNet, "best_result_serialized.txt",  "best_result.dot");
-            //cerr << "minimal error detected " << myNet.minimal_error << " , model saved to files" << endl;
+			saveModel(myNet, "best_result_serialized.txt",  "best_result.dot");
+			//cerr << "minimal error detected " << myNet.minimal_error << " , model saved to files" << endl;
 	    }
 		
 		if(!(trainingPass % 10)){
 			cout << "At epoch " << myNet.trainingPass << " Net recent average error: " << epoch_average_error;
 			epoch_error = 0;
 			epoch_num_in = 0;
-            for (auto data : input_output_validate_vals){
-                myNet.feedForward(data.first);
-                // Train the net what the outputs should have been:
-                myNet.backProp(data.second, false);
+			while(!validateData.isEof()){
+				// Get new input data and feed it forward:	
+				validateData.get(inputVals, targetVals);
+				assert(inputVals.size() == myNet.input_layer.size());
+				assert(targetVals.size() == myNet.output_layer.size());
+				myNet.feedForward(inputVals);	
+				myNet.backProp(targetVals, false); 
 				epoch_num_in++;
 				epoch_error += myNet.getRecentAverageError();
 			}
@@ -184,7 +195,6 @@ int main(int argc, char* argv[])
 			cout << " validate error = " << epoch_average_error << endl;
 			saveModel(myNet, final_result_serialized, final_result_dot);	
 	    }
-
 		if(do_gnuplot){
 			fprintf(gp, "reread\n");
 			fprintf(gp, "replot\n");
@@ -197,6 +207,5 @@ int main(int argc, char* argv[])
 	    ++trainingPass;
 	    ++myNet.trainingPass;
     }
-    saveModel(myNet, final_result_serialized, final_result_dot);
-    saveModel(myNet_minimal, "best_result_serialized.txt",  "best_result.dot");
+	saveModel(myNet, final_result_serialized, final_result_dot);	
 }

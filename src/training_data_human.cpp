@@ -1,40 +1,46 @@
-#include<./training_data.h>
+#include<./training_data_human.h>
 
 using namespace std;
 
-void TrainingData::reset(void)
+bool TrainingDataHuman::isEof(void)
+{
+		return m_trainingDataFile.eof();
+};
+	
+void TrainingDataHuman::reset(void)
 {
 	m_trainingDataFile.clear();
 	m_trainingDataFile.seekg (0);
 }
 
-TrainingData::TrainingData(const string filename)
+void TrainingDataHuman::InitFile(const string filename)
 {
-	m_trainingDataFile.open(filename.c_str());
+	m_trainingDataFile.open(filename.c_str(), ios::in);
+	assert(m_trainingDataFile.is_open());
 }
 
 
-unsigned TrainingData::getNextInputs(vector<double> &inputVals)
+void TrainingDataHuman::getNextInputs(vector<double> &inputVals)
 {
     inputVals.clear();
 
     string line;
     getline(m_trainingDataFile, line);
     stringstream ss(line);
-
-    string label;
+	string label;
     ss >> label;
+
     if (label.compare("in:") == 0) {
         double oneValue;
         while (ss >> oneValue) {
+            //std::cout << oneValue << "  ";
             inputVals.push_back(oneValue);
         }
+        //std::cout  << std::endl;
     }
-
-    return inputVals.size();
 }
 
-unsigned TrainingData::getTargetOutputs(vector<double> &targetOutputVals)
+void TrainingDataHuman::getTargetOutputs(vector<double> &targetOutputVals)
 {
     targetOutputVals.clear();
 
@@ -42,7 +48,7 @@ unsigned TrainingData::getTargetOutputs(vector<double> &targetOutputVals)
     getline(m_trainingDataFile, line);
     stringstream ss(line);
 
-    string label;
+	string label;
     ss>> label;
     if (label.compare("out:") == 0) {
         double oneValue;
@@ -50,12 +56,17 @@ unsigned TrainingData::getTargetOutputs(vector<double> &targetOutputVals)
             targetOutputVals.push_back(oneValue);
         }
     }
-
-    return targetOutputVals.size();
 }
 
-unsigned TrainingData::get(vector<double> &inputVals, vector<double> &targetOutputVals)
-{
-	getNextInputs(inputVals);
-	getTargetOutputs(targetOutputVals);
+void TrainingDataHuman::ReadAllFromFile(vector<std::pair<vector<double>, vector<double>>> &input_output_vals, int input_size, int output_size){
+    vector<double> inputs, outputs;
+    while(!m_trainingDataFile.eof()){
+        getNextInputs(inputs);
+        getTargetOutputs(outputs);
+        if(inputs.size() == input_size && outputs.size() == output_size)
+            input_output_vals.push_back(std::pair(inputs, outputs));
+        else{
+            cout << "FAIL in input/output sizes!!!!" << endl;
+        }
+    }
 }

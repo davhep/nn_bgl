@@ -243,9 +243,9 @@ int main(int argc, char* argv[])
 		// remove useless - with low weights
 		if(fabs(container_mean(weights_vec)) < 0.02){
 			cout << "Removing edge!!!" << endl;
-            egdes_to_remove.push_back(*ei);
-			boost::remove_edge(source, target, myNet_modified.m_net_graph);
-            continue;
+            //egdes_to_remove.push_back(*ei);
+            //boost::remove_edge(source, target, myNet_modified.m_net_graph);
+            //continue;
 		}
 		
 		
@@ -269,7 +269,7 @@ int main(int argc, char* argv[])
 			myNet_modified.m_net_graph[neuron.output].tag <<  "	"<< neuron.correlation << endl;
 	
 	int neurons_to_insert = 2;
-	for(int n=0; n < neurons_to_insert; n++){
+    for(int n=0; n < -neurons_to_insert; n++){
 		NeuronP neuron_new;
 		neuron_new.tag = ++myNet_modified.tag_max;
 		SinapsP sinaps_in1, sinaps_in2, sinaps_out;
@@ -317,12 +317,112 @@ int main(int argc, char* argv[])
 			edges_to_insert--;
 		}
 	};
+
+    myNet_modified.on_topology_update();
+
+
+
+
+    //more theory based way to add neuron
+    //we have to calc(delta_in_1, out_2 * out_3), and add from 2 and 3 to 1
+    // delta_in == m_gradient
+
+    neurons_to_add.clear();
+
+    int output_is_higer = myNet.topo_sorted.size() - 1;
+    // output neuron must be higher, than output_is_higer at given i1
+    // the idea is if at given i1 output_neuron output_is_higer is child of i1, for all next i1 neuron will be child of output_is_higer too, so we can exclude i3 < output_is_higer
+
+    for(int out = myNet_modified.topo_sorted.size() - 1; out >= 0; out --){
+        auto v_out = myNet_modified.topo_sorted[out];
+        parent_checker checker(v_out, myNet_modified.m_net_graph);
+        for (int i1 = myNet_modified.topo_sorted.size() - 1; i1 >= 0; i1--){
+            auto v_i1 = myNet_modified.topo_sorted[i1];
+            if(checker.is_parent(v_i1)) continue;
+            for (int i2 = i1 - 1; i2 >= 0; i2--){
+                auto v_i2 = myNet_modified.topo_sorted[i2];
+                if(checker.is_parent(v_i2)) continue;
+                vector<double> vec2_mult_vec3={};
+                for(int n=0; n < out_values[v_i1].size(); n++)
+                    vec2_mult_vec3.push_back(out_values[v_i1][n]*out_values[v_i2][n]);
+                double correlation_3 = container_correlation(m_gradient[v_out], vec2_mult_vec3);
+                std::cout  << i1 << "\t" << i2 << "\t" << v_out << "\t" << correlation_3 << "\n";
+                neurons_to_add.push_back(potential_neuron{v_i1, v_i2, v_out, correlation_3});
+            }
+        }
+    }
+
+
+/*
+    for (int i1 = myNet.topo_sorted.size() - 1; i1 >= 0; i1--){
+        auto v1 = myNet.topo_sorted[i1];
+        for (int i2 = i1 - 1; i2 >= 0; i2--){
+            auto v2 = myNet.topo_sorted[i2];
+            for (int i3 = output_is_higer; i3 >= 0; i3--){
+                auto v3 = myNet.topo_sorted[i3];
+                vector<double> vec2_mult_vec3;
+                for(int n=0; n < out_values[v2].size(); n++)
+                    vec2_mult_vec3.push_back(out_values[v2][n]*out_values[v3][n]);
+                double correlation_3 = container_correlation(m_gradient[v1], vec2_mult_vec3);
+                std::cout  << i1 << "\t" << i2 << "\t" << i3 << "\t" << correlation_3 << "\n";
+                neurons_to_add.push_back(potential_neuron
+                                         {myNet.topo_sorted[i2],
+                                          myNet.topo_sorted[i3],
+                                          myNet.topo_sorted[i1],
+                                            correlation_3});
+
+        }
+        }
+    }
+    */
+
+    std::sort(neurons_to_add.begin(), neurons_to_add.end(), [](potential_neuron a, potential_neuron b) {
+        return fabs(a.correlation) > fabs(b.correlation);
+    });
+
+    std::cout << "sorting complete\n" << std::endl;
+
+    for(auto neuron: neurons_to_add)
+        cout << myNet.m_net_graph[neuron.input1].tag << "	"  << myNet.m_net_graph[neuron.input2].tag << "	" <<
+            myNet.m_net_graph[neuron.output].tag <<  "	"<< neuron.correlation << endl;
+
+    int neurons_inserted = 0;
+    for(int n=0; (neurons_inserted < neurons_to_insert) && (n<neurons_to_add.size()) ; n++){
+        Net myNet_modified_temp = myNet_modified;
+        //will try to insert neuron to _temp. if result graph is not cyclic, copy updated _temp back to modified
+        NeuronP neuron_new;
+        neuron_new.tag = ++myNet_modified_temp.tag_max;
+        SinapsP sinaps_in1, sinaps_in2, sinaps_out;
+        sinaps_in1.m_weight=0.01;
+        sinaps_in2.m_weight=0.01;
+        sinaps_out.m_weight=0.01;
+        auto neuron = neurons_to_add[n];
+        cout << "Creating neuron with tag " << neuron_new.tag << "	from " << myNet.m_net_graph[neuron.input1].tag << " and " << myNet.m_net_graph[neuron.input2].tag << " to " << myNet.m_net_graph[neuron.output].tag << endl;
+        auto vertex_new = boost::add_vertex(neuron_new, myNet_modified_temp.m_net_graph);
+        boost::add_edge(neuron.input1, vertex_new, sinaps_in1, myNet_modified_temp.m_net_graph);
+        boost::add_edge(neuron.input2, vertex_new, sinaps_in2, myNet_modified_temp.m_net_graph);
+        boost::add_edge(vertex_new, neuron.output, sinaps_out, myNet_modified_temp.m_net_graph);
+        try{
+            myNet_modified_temp.on_topology_update();
+        }
+        catch (...)
+        {
+            std::cout << "Error cycling on graph detected !!!" << std::endl;
+            saveModel(myNet_modified_temp, final_result_serialized.c_str(), "updated_model_DAG.dot");
+            continue;
+        }
+        //OK, if exception is not catched, graph is DAG, and we actually add this neuron
+        cout << "Actually add neuron" << endl;
+        myNet_modified = myNet_modified_temp;
+        neurons_inserted++;
+    }
 	
 
 	
 	// iterate over vertices and remove neurons without output edges
 	// this is the last procedure, because of after vertex removing there is no more way to math original and modified models
-	do{
+    /*
+    do{
 		boost::tie(vi, vi_end) = boost::vertices(myNet_modified.m_net_graph);
 		for (; vi != vi_end; ++vi){
 			if(myNet_modified.m_net_graph[*vi].is_output || myNet_modified.m_net_graph[*vi].is_input) continue; //output neurons have no output connections at all, just inputs
@@ -342,7 +442,7 @@ int main(int argc, char* argv[])
 			}
 		}
 	}while(vi != vi_end);
-	
+    */
 	myNet_modified.on_topology_update();
 	
 	saveModel(myNet_modified, final_result_serialized.c_str(), "updated_model.dot");

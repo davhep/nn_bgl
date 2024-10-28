@@ -1,6 +1,7 @@
 trainingData.txt
+CMakeLists.txt.user
 makeTrainingSamples
 neural-net
 neural-net_bgl
-build/*
+build*/*
 

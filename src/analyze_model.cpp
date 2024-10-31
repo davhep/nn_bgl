@@ -145,7 +145,8 @@ int main(int argc, char* argv[])
 	
 	TrainingDataHuman trainData;
 	trainData.InitFile("train_data.txt");
-	
+    TrainingDataHuman validateData;
+    validateData.InitFile("validate_data.txt");
 	
 	Net myNet(topology);
 	cout << "Loading file " << input_file << endl;
@@ -168,17 +169,20 @@ int main(int argc, char* argv[])
 	double epoch_error = 0;
 	double epoch_average_error = 0;
 	unsigned int epoch_num_in = 0;
+
+    vector<std::pair<vector<double>, vector<double>>> input_output_vals;
+    vector<std::pair<vector<double>, vector<double>>> input_output_validate_vals;
+    trainData.ReadAllFromFile(input_output_vals, myNet.input_layer.size(), myNet.output_layer.size());
+    validateData.ReadAllFromFile(input_output_validate_vals, myNet.input_layer.size(), myNet.output_layer.size());
 	
-	while(!trainData.isEof()){
-		// Get new input data and feed it forward:
-		trainData.getNextInputs(inputVals);
-		if(inputVals.size() != topology[0]) continue;
-		myNet.feedForward(inputVals);
+    for (auto data : input_output_vals){
+        myNet.feedForward(data.first);
 		
 		// Collect the net's actual results:
 		myNet.getResults(resultVals);
 		// Train the net what the outputs should have been:
 		trainData.getTargetOutputs(targetVals);
+
 		if(debug_high)
 		{
 			cout << "Pass" << trainingPass << endl;
@@ -186,8 +190,8 @@ int main(int argc, char* argv[])
 			showVectorVals("Outputs:", resultVals);
 			showVectorVals("Targets:", targetVals);
 		}	
-		assert(targetVals.size() == topology.back());	
-		myNet.backProp(targetVals, false); // don not upgrade weigths to avoid model change while analyze
+
+        myNet.backProp(data.second, false); // don not upgrade weigths to avoid model change while analyze
 		
 		epoch_num_in++;
 		epoch_error += myNet.getRecentAverageError();
@@ -449,6 +453,8 @@ int main(int argc, char* argv[])
 	}while(vi != vi_end);
     */
 	myNet_modified.on_topology_update();
+
+
 	
 	saveModel(myNet_modified, final_result_serialized.c_str(), "updated_model.dot");
 }

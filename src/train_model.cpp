@@ -136,7 +136,24 @@ int main(int argc, char* argv[])
 	
 	while(trainingPass <= epochs_max){
 		
-		myNet.eta = 100.0*learn_rate/(myNet.trainingPass+1000.0);
+        myNet.eta = 100.0*1000*learn_rate/(myNet.trainingPass+1000.0)/(myNet.trainingPass+1000.0);
+
+        boost::graph_traits<Graph>::edge_iterator ei, ei_end;
+        for (boost::tie(ei, ei_end) = boost::edges(myNet.m_net_graph); ei != ei_end; ++ei){
+            auto age = myNet.m_net_graph[*ei].age++;
+            //myNet.m_net_graph[*ei].rate = 0.02*exp(-0.0002*myNet.m_net_graph[*ei].age);
+            myNet.m_net_graph[*ei].rate = 50.0*learn_rate/((age+1000.0));
+            auto source = boost::source ( *ei, myNet.m_net_graph);
+            int  source_tag = myNet.m_net_graph[source].tag;
+            auto target = boost::target ( *ei, myNet.m_net_graph);
+            int  target_tag = myNet.m_net_graph[target].tag;
+            auto weight = myNet.m_net_graph[*ei].m_weight;
+            cout << "weights " << myNet.trainingPass << " " << source_tag << " " << target_tag << " " << weight << endl;
+        }
+        //ei--;
+        //cout << myNet.m_net_graph[*ei].rate << "    " << myNet.eta << endl;
+
+
 		
 		double epoch_error = 0;
 		double epoch_average_error = 0;

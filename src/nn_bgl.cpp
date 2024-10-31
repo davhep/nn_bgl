@@ -73,11 +73,13 @@ void Net::backProp(const std::vector<double> &targetVals, bool update_weights)
 	    if(debug_low){
 			cerr <<"m_recentAverageError =  (m_recentAverageError * m_recentAverageSmoothingFactor + m_error) / (m_recentAverageSmoothingFactor + 1.0);" << endl;
 			cerr <<m_recentAverageError << "	" << m_recentAverageError << "	" << m_recentAverageSmoothingFactor << "	" << m_error << "	" << m_recentAverageSmoothingFactor << endl;
-		}
+        }
+
+        //OK, at first stage - update neuron deltas and gradients
 	   	for (int i = topo_sorted.size() - 1; i >= 0; i--){
 			//reverse topological order
 			auto neuron = &m_net_graph[topo_sorted[i]];
-			if (debug_low) cerr <<"Update gradients on outputs for neuron " << neuron->tag << endl;
+            if (debug_low) cerr <<"Update gradients on outputs for neuron " << neuron->tag << endl;
 			double delta = 0;
 		    
 		    if(neuron->is_output){
@@ -103,19 +105,25 @@ void Net::backProp(const std::vector<double> &targetVals, bool update_weights)
 			if (debug_low) cerr <<"neuron->tag=	" << neuron->tag  << "	neuron->m_gradient= " << neuron->m_gradient << endl;			
 	     }
    
-   
-	     for (int i = topo_sorted.size() - 1; i >= 0; i--){
-			//reverse topological order
-			auto neuron = &m_net_graph[topo_sorted[i]];
-			typename boost::graph_traits<Graph>::in_edge_iterator ei, ei_end;
-		    for (boost::tie(ei, ei_end) = in_edges(topo_sorted[i], m_net_graph); ei != ei_end; ++ei){
+
+        //OK, at second stage - update on edge weights
+
+
+         for (int i = topo_sorted.size() - 1; i >= 0; i--){
+            //reverse topological order
+            auto neuron = &m_net_graph[topo_sorted[i]];
+
+            typename boost::graph_traits<Graph>::in_edge_iterator ei, ei_end;
+            for (boost::tie(ei, ei_end) = in_edges(topo_sorted[i], m_net_graph); ei != ei_end; ++ei){
 				auto source = boost::source ( *ei, m_net_graph);
 				auto target = boost::target ( *ei, m_net_graph );
-				m_net_graph[*ei].m_delta_weight = eta * m_net_graph[source].m_outputVal * m_net_graph[target].m_gradient;
+                //m_net_graph[*ei].m_delta_weight = m_net_graph[*ei].rate * m_net_graph[source].m_outputVal * m_net_graph[target].m_gradient;
+                m_net_graph[*ei].m_delta_weight = m_net_graph[*ei].rate * m_net_graph[source].m_outputVal * m_net_graph[target].m_gradient;
+
 				if (update_weights) m_net_graph[*ei].m_weight += m_net_graph[*ei].m_delta_weight;
 				if (debug_low) cerr <<"Wij " << m_net_graph[source].tag << "	to " << m_net_graph[target].tag << " updated for " << m_net_graph[*ei].m_delta_weight << endl;
 			}
-		}		 
+        }
 }
 
 

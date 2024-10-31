@@ -44,6 +44,7 @@ struct NeuronP {
    double m_input_value;
    double m_outputVal;
    double m_gradient; //gradient of loss function on input signal of given neuron
+   unsigned long age=0; //neuron age, in number of iterations
    template<class Archive>
    void serialize(Archive & ar, const unsigned int file_version){
 	   ar & tag;
@@ -61,6 +62,8 @@ struct NeuronP {
 struct SinapsP {
    double m_weight=0.02;
    double m_delta_weight=0;
+   unsigned long age=0;
+   double rate=0.02;
    template<class Archive>
    void serialize(Archive & ar, const unsigned int file_version){
 	   ar & m_weight;

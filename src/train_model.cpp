@@ -172,8 +172,6 @@ int main(int argc, char* argv[])
             myNet.feedForward(data.first);
 			// Train the net what the outputs should have been:
             myNet.backProp(data.second, !(trainingPass == epochs_max)); //if last epoch, do not update weight, just calculate error
-			epoch_num_in++;
-			epoch_error += myNet.getRecentAverageError();
 		}
 
 		epoch_average_error = epoch_error/epoch_num_in;
@@ -181,11 +179,21 @@ int main(int argc, char* argv[])
 	    if(epoch_average_error < myNet.minimal_error){
 			myNet.minimal_error = epoch_average_error;
             myNet_minimal = myNet;
-            //saveModel(myNet, "best_result_serialized.txt",  "best_result.dot");
-            //cerr << "minimal error detected " << myNet.minimal_error << " , model saved to files" << endl;
 	    }
 		
 		if(!(trainingPass % 10)){
+
+            epoch_error = 0;
+            epoch_num_in = 0;
+            //We recalculate error, because updating influence on error estimation
+            for (auto data : input_output_vals){
+                myNet.feedForward(data.first);
+                myNet.backProp(data.second, false);
+                epoch_num_in++;
+                epoch_error += myNet.getRecentAverageError();
+            }
+            epoch_average_error = epoch_error/epoch_num_in;
+
 			cout << "At epoch " << myNet.trainingPass << " Net recent average error: " << epoch_average_error;
 			epoch_error = 0;
 			epoch_num_in = 0;
@@ -195,8 +203,7 @@ int main(int argc, char* argv[])
                 myNet.backProp(data.second, false);
 				epoch_num_in++;
 				epoch_error += myNet.getRecentAverageError();
-			}
-			
+			}			
 			epoch_average_error = epoch_error/epoch_num_in;
 			cout << " validate error = " << epoch_average_error << endl;
 			saveModel(myNet, final_result_serialized, final_result_dot);	

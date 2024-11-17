@@ -68,6 +68,7 @@ struct SinapsP {
    void serialize(Archive & ar, const unsigned int file_version){
 	   ar & m_weight;
 	   ar & m_delta_weight;
+       ar & age;
    }
 };
 

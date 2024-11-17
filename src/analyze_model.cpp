@@ -217,6 +217,30 @@ int main(int argc, char* argv[])
     
     //to iterate over original myNet and modify myNet_modified to avoid inconsistencies in inerations
     Net myNet_modified = myNet;
+
+    epoch_num_in=0;
+    epoch_error=0;
+    for (auto data : input_output_vals){
+        myNet_modified.feedForward(data.first);
+        myNet_modified.backProp(data.second, false);
+        epoch_num_in++;
+        epoch_error += myNet_modified.getRecentAverageError();
+    }
+
+    cout << "Averaged error on modified = " << epoch_error/epoch_num_in << " ndata= " << epoch_num_in << endl;
+
+
+    epoch_num_in=0;
+    epoch_error=0;
+    for (auto data : input_output_vals){
+        myNet.feedForward(data.first);
+        myNet.backProp(data.second, false);
+        epoch_num_in++;
+        epoch_error += myNet.getRecentAverageError();
+    }
+
+    cout << "Averaged error on non modified = " << epoch_error/epoch_num_in << " ndata= " << epoch_num_in << endl;
+
     
 	std::vector<edge_descriptor> egdes_to_remove;
 
@@ -245,7 +269,7 @@ int main(int argc, char* argv[])
 		cout << source << " to " << target << " W= " << container_mean(weights_vec) << "	W_var= " << container_deviation(weights_vec) << "	d= " << container_mean(m_deltas_vec) << "	d_var=	" << container_deviation(m_deltas_vec) << " d_var/W= " << container_deviation(m_deltas_vec)/container_mean(weights_vec) << endl;
 		
 		// remove useless - with low weights
-		if(fabs(container_mean(weights_vec)) < 0.02){
+        if(fabs(container_mean(weights_vec)) < 0.02){
 			cout << "Removing edge!!!" << endl;
             //egdes_to_remove.push_back(*ei);
             //boost::remove_edge(source, target, myNet_modified.m_net_graph);
@@ -272,7 +296,7 @@ int main(int argc, char* argv[])
 		cout << myNet_modified.m_net_graph[neuron.input1].tag << "	"  << myNet_modified.m_net_graph[neuron.input2].tag << "	" << 
 			myNet_modified.m_net_graph[neuron.output].tag <<  "	"<< neuron.correlation << endl;
 	
-	int neurons_to_insert = 2;
+    int neurons_to_insert = 1;
     for(int n=0; n < -neurons_to_insert; n++){
 		NeuronP neuron_new;
 		neuron_new.tag = ++myNet_modified.tag_max;
@@ -310,7 +334,7 @@ int main(int argc, char* argv[])
 		});
 		
 	
-	int edges_to_insert = 2;
+    int edges_to_insert = -2;
 	for(int n=0; edges_to_insert>0 && n<edge_to_add.size(); n++){
 		auto edge = edge_to_add[n];
 		parent_checker checker(edge.output, myNet_modified.m_net_graph);
@@ -393,7 +417,7 @@ int main(int argc, char* argv[])
             myNet.m_net_graph[neuron.output].tag <<  "	"<< neuron.correlation << endl;
 
     int neurons_inserted = 0;
-    for(int n=0; (neurons_inserted < neurons_to_insert) && (n<neurons_to_add.size()) ; n++){
+    for(int n=0; (neurons_inserted < -neurons_to_insert) && (n<neurons_to_add.size()) ; n++){
         Net myNet_modified_temp = myNet_modified;
         //will try to insert neuron to _temp. if result graph is not cyclic, copy updated _temp back to modified
         NeuronP neuron_new;
@@ -452,9 +476,41 @@ int main(int argc, char* argv[])
 		}
 	}while(vi != vi_end);
     */
-	myNet_modified.on_topology_update();
+    myNet_modified.on_topology_update();
 
+    //try to estimate optimal edge values by training procedure with old edges frozen
 
-	
+    vector<boost::graph_traits<Graph>::edge_iterator> new_edges;
+    //froze old edges by rate=0 and from list of new edges
+    for (boost::tie(ei, ei_end) = boost::edges(myNet.m_net_graph); ei != ei_end; ++ei){
+        auto age = myNet.m_net_graph[*ei].age;
+        //myNet.m_net_graph[*ei].rate = 0.02*exp(-0.0002*myNet.m_net_graph[*ei].age);
+        cout << "Edge1 " << *ei << " " << myNet.m_net_graph[*ei].age << " " << myNet.m_net_graph[*ei].m_weight << endl;
+        if(age<1) {
+            cout << "New edge" << *ei << endl;
+                    new_edges.push_back(ei);
+                    myNet.m_net_graph[*ei].rate = 0.1;
+                }
+                else
+            {
+                myNet.m_net_graph[*ei].rate = 0;
+            }
+    }
+
+    //iterate some epochs on data
+    for(int n=0;n<100;n++){
+
+        for(auto ei: new_edges){
+            auto age = myNet.m_net_graph[*ei].age++;
+            myNet.m_net_graph[*ei].rate = 50.0/(age+1000.0);
+            cout << n << " " << *ei << myNet.m_net_graph[*ei].m_weight << endl;
+        }
+
+        for (auto data : input_output_vals){
+            myNet.feedForward(data.first);
+            // Train the net what the outputs should have been:
+            myNet.backProp(data.second, true); //if last epoch, do not update weight, just calculate error
+        }
+    }
 	saveModel(myNet_modified, final_result_serialized.c_str(), "updated_model.dot");
 }

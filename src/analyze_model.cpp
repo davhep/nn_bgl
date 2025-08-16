@@ -7,31 +7,30 @@
 #include <sstream>
 #include <map>  
 #include <numeric>
-
-#include <iostream>
-#include <fstream>
-
 #include <iterator>
+#include <unordered_set>
+#include <memory>
+#include <cstdio>
 
 #include <nn_bgl/nn_bgl.h>
 #include <nn_bgl/training_data_human.h>
 #include <boost/program_options.hpp>
+#include <boost/shared_ptr.hpp>
 
-#define debug_high false
-#define debug_low false
+constexpr bool DEBUG_HIGH = false;
 
 template<class num_type>
-void showVectorVals(string label, vector<num_type> &v)
+void showVectorVals(const std::string& label, const std::vector<num_type>& v)
 {
-	cout << label << " ";
+	std::cout << label << " ";
 	for(unsigned i = 0; i < v.size(); ++i)
 	{
-		cout << v[i] << " ";
+		std::cout << v[i] << " ";
 	}
-	cout << endl;
+	std::cout << std::endl;
 }
 
-void dumpVectorVals(string label, ofstream &data_dump, vector<double> &v)
+void dumpVectorVals(const std::string& label, std::ofstream& data_dump, const std::vector<double>& v)
 {
 	data_dump << label << " ";
 	for(unsigned i = 0; i < v.size(); ++i)
@@ -40,13 +39,13 @@ void dumpVectorVals(string label, ofstream &data_dump, vector<double> &v)
 	}
 }
 
-void saveModel(Net myNet, std::string serialized_file,  std::string dot_file_name){
+void saveModel(Net& myNet, const std::string& serialized_file, const std::string& dot_file_name){
 	myNet.save(serialized_file);
-	ofstream dot_file(dot_file_name);
+	std::ofstream dot_file(dot_file_name);
 	boost::dynamic_properties dp;
-	dp.property("node_id", get(&NeuronP::tag, myNet.m_net_graph));
-	dp.property("label", get(&NeuronP::tag, myNet.m_net_graph));
-	dp.property("label", get(&SinapsP::m_weight, myNet.m_net_graph));	
+	dp.property("node_id", boost::get(&NeuronP::tag, myNet.m_net_graph));
+	dp.property("label", boost::get(&NeuronP::tag, myNet.m_net_graph));
+	dp.property("label", boost::get(&SinapsP::m_weight, myNet.m_net_graph));	
 	boost::write_graphviz_dp(dot_file, myNet.m_net_graph, dp);
 } 
 
@@ -114,7 +113,7 @@ int main(int argc, char* argv[])
 {
 	std::string input_file = "final_result_serialized.txt";
 	std::string final_result_serialized = "final_result_serialized.txt";
-	vector<unsigned> topology={2,10,10,1};
+	std::vector<unsigned> topology={2,10,10,1};
 		
 	boost::program_options::options_description desc("Allowed options");
 	desc.add_options()
@@ -128,7 +127,7 @@ int main(int argc, char* argv[])
 	;
 	
 	boost::program_options::variables_map vm;
-    boost::program_options::store(parse_command_line(argc, argv, desc), vm);
+    boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
     
     if (vm.count("help")) {  
 		std::cout << desc << "\n";
@@ -137,43 +136,43 @@ int main(int argc, char* argv[])
 	if(vm.count("input_file")) input_file = vm["input_file"].as<std::string>();
 	
 	if (!vm["topology"].empty()) {
-		topology = vm["topology"].as<vector<unsigned> >();
+		topology = vm["topology"].as<std::vector<unsigned> >();
 		showVectorVals("topology: ", topology);
 	};
 	
 	if(vm.count("output_file_serialized")) final_result_serialized = vm["output_file_serialized"].as<std::string>();
 	
 	TrainingDataHuman trainData;
-	trainData.InitFile("train_data.txt");
+	trainData.initFile("train_data.txt");
     TrainingDataHuman validateData;
-    validateData.InitFile("validate_data.txt");
+    validateData.initFile("validate_data.txt");
 	
 	Net myNet(topology);
-	cout << "Loading file " << input_file << endl;
+	std::cout << "Loading file " << input_file << std::endl;
 	myNet.load(input_file);
-	cout << "myNet.minimal_error = " << myNet.minimal_error << endl;
+	std::cout << "myNet.minimal_error = " << myNet.getMinimalError() << std::endl;
 	
-	vector<double> inputVals, targetVals, resultVals;	
+	std::vector<double> inputVals, targetVals, resultVals;	
 	int trainingPass = 0;
 	// int epochs_max=1000; // Unused variable
 
 	
-	ofstream data_dump("model_vs_practice.txt");
+	std::ofstream data_dump("model_vs_practice.txt");
 	// for gnuplotting by 
 	// splot 'model_vs_practice.txt' u 2:3:5, 'model_vs_practice.txt' u 2:3:7
 	boost::graph_traits<Graph>::edge_iterator ei, ei_end;
 	boost::graph_traits<Graph>::vertex_iterator vi, vi_end;
-	std::map<edge_descriptor, vector<double>>	m_deltas, weights;
-	std::map<vertex_descriptor, vector<double>> out_values, m_gradient;
+	std::map<edge_descriptor, std::vector<double>>	m_deltas, weights;
+	std::map<vertex_descriptor, std::vector<double>> out_values, m_gradient;
 	
 	double epoch_error = 0;
 	    // double epoch_average_error = 0; // Unused variable
 	unsigned int epoch_num_in = 0;
 
-    vector<std::pair<vector<double>, vector<double>>> input_output_vals;
-    vector<std::pair<vector<double>, vector<double>>> input_output_validate_vals;
-    trainData.ReadAllFromFile(input_output_vals, myNet.input_layer.size(), myNet.output_layer.size());
-    validateData.ReadAllFromFile(input_output_validate_vals, myNet.input_layer.size(), myNet.output_layer.size());
+    std::vector<std::pair<std::vector<double>, std::vector<double>>> input_output_vals;
+    std::vector<std::pair<std::vector<double>, std::vector<double>>> input_output_validate_vals;
+    trainData.readAllFromFile(input_output_vals, myNet.input_layer.size(), myNet.output_layer.size());
+    validateData.readAllFromFile(input_output_validate_vals, myNet.input_layer.size(), myNet.output_layer.size());
 	
     for (auto data : input_output_vals){
         myNet.feedForward(data.first);
@@ -183,9 +182,9 @@ int main(int argc, char* argv[])
 		// Train the net what the outputs should have been:
 		trainData.getTargetOutputs(targetVals);
 
-		if(debug_high)
+		if(DEBUG_HIGH)
 		{
-			cout << "Pass" << trainingPass << endl;
+			std::cout << "Pass" << trainingPass << std::endl;
 			showVectorVals("Inputs :", inputVals);
 			showVectorVals("Outputs:", resultVals);
 			showVectorVals("Targets:", targetVals);
@@ -199,7 +198,7 @@ int main(int argc, char* argv[])
 		dumpVectorVals("inputVals	", data_dump, inputVals);
 		dumpVectorVals("resultVals	", data_dump, resultVals);
 		dumpVectorVals("targetVals	", data_dump, targetVals);
-		data_dump << endl;
+		data_dump << std::endl;
 		
 		for (boost::tie(ei, ei_end) = boost::edges(myNet.m_net_graph); ei != ei_end; ++ei){
 				weights[*ei].push_back(myNet.m_net_graph[*ei].m_weight);
@@ -211,7 +210,7 @@ int main(int argc, char* argv[])
 		}
 	}
 	
-	cout << "Averaged error = " << epoch_error/epoch_num_in << endl;
+	std::cout << "Averaged error = " << epoch_error/epoch_num_in << std::endl;
 	
 	//we try to analize and update model
     
@@ -227,7 +226,7 @@ int main(int argc, char* argv[])
         epoch_error += myNet_modified.getRecentAverageError();
     }
 
-    cout << "Averaged error on modified = " << epoch_error/epoch_num_in << " ndata= " << epoch_num_in << endl;
+    std::cout << "Averaged error on modified = " << epoch_error/epoch_num_in << " ndata= " << epoch_num_in << std::endl;
 
 
     epoch_num_in=0;
@@ -239,7 +238,7 @@ int main(int argc, char* argv[])
         epoch_error += myNet.getRecentAverageError();
     }
 
-    cout << "Averaged error on non modified = " << epoch_error/epoch_num_in << " ndata= " << epoch_num_in << endl;
+    std::cout << "Averaged error on non modified = " << epoch_error/epoch_num_in << " ndata= " << epoch_num_in << std::endl;
 
     
 	// std::vector<edge_descriptor> egdes_to_remove; // Unused variable
@@ -266,11 +265,11 @@ int main(int argc, char* argv[])
 	    auto weights_vec = weights[*ei];
 	    auto m_deltas_vec = m_deltas[*ei];
 	    	
-		cout << source << " to " << target << " W= " << container_mean(weights_vec) << "	W_var= " << container_deviation(weights_vec) << "	d= " << container_mean(m_deltas_vec) << "	d_var=	" << container_deviation(m_deltas_vec) << " d_var/W= " << container_deviation(m_deltas_vec)/container_mean(weights_vec) << endl;
+		std::cout << source << " to " << target << " W= " << container_mean(weights_vec) << "	W_var= " << container_deviation(weights_vec) << "	d= " << container_mean(m_deltas_vec) << "	d_var=	" << container_deviation(m_deltas_vec) << " d_var/W= " << container_deviation(m_deltas_vec)/container_mean(weights_vec) << std::endl;
 		
 		// remove useless - with low weights
         if(fabs(container_mean(weights_vec)) < 0.02){
-			cout << "Removing edge!!!" << endl;
+			std::cout << "Removing edge!!!" << std::endl;
             //egdes_to_remove.push_back(*ei);
             //boost::remove_edge(source, target, myNet_modified.m_net_graph);
             //continue;
@@ -284,7 +283,7 @@ int main(int argc, char* argv[])
 			if(checker.is_parent(*vi) || *vi==source ) continue; //if vi is ancestor of edge target or equal to source, do not any calculations
 			double correlation = container_correlation(out_values[*vi], m_deltas_vec);
 			neurons_to_add.push_back(potential_neuron{*vi,source,target,correlation});
-			if(fabs(correlation) > 0) cout << "Corellation with vertices: " <<  "| vi= " << myNet.m_net_graph[*vi].tag << "	corr=	" << correlation << " | " << endl;
+			if(fabs(correlation) > 0) std::cout << "Corellation with vertices: " <<  "| vi= " << myNet.m_net_graph[*vi].tag << "	corr=	" << correlation << " | " << std::endl;
 		}
 	}
 	
@@ -293,8 +292,8 @@ int main(int argc, char* argv[])
 	});
 	
 	for(auto neuron: neurons_to_add)
-		cout << myNet_modified.m_net_graph[neuron.input1].tag << "	"  << myNet_modified.m_net_graph[neuron.input2].tag << "	" << 
-			myNet_modified.m_net_graph[neuron.output].tag <<  "	"<< neuron.correlation << endl;
+		std::cout << myNet_modified.m_net_graph[neuron.input1].tag << "	"  << myNet_modified.m_net_graph[neuron.input2].tag << "	" << 
+			myNet_modified.m_net_graph[neuron.output].tag <<  "	"<< neuron.correlation << std::endl;
 	
     int neurons_to_insert = 1;
     for(int n=0; n < neurons_to_insert; n++){
@@ -302,7 +301,7 @@ int main(int argc, char* argv[])
 		neuron_new.tag = ++myNet_modified.tag_max;
 		SinapsP sinaps_in1, sinaps_in2, sinaps_out;
 		auto neuron = neurons_to_add[n];
-		cout << "Creating neuron with tag " << neuron_new.tag << "	from " << myNet.m_net_graph[neuron.input1].tag << " and " << myNet.m_net_graph[neuron.input2].tag << " to " << myNet.m_net_graph[neuron.output].tag << endl;
+		std::cout << "Creating neuron with tag " << neuron_new.tag << "	from " << myNet.m_net_graph[neuron.input1].tag << " and " << myNet.m_net_graph[neuron.input2].tag << " to " << myNet.m_net_graph[neuron.output].tag << std::endl;
 		auto vertex_new = boost::add_vertex(neuron_new, myNet_modified.m_net_graph);
 		boost::add_edge(neuron.input1, vertex_new, sinaps_in1, myNet_modified.m_net_graph);
 		boost::add_edge(neuron.input2, vertex_new, sinaps_in2, myNet_modified.m_net_graph);
@@ -314,19 +313,19 @@ int main(int argc, char* argv[])
 	boost::graph_traits<Graph>::vertex_iterator vi_2, vi_end_2;
 	for (boost::tie(vi_1, vi_end_1) = boost::vertices(myNet.m_net_graph); vi_1 != vi_end_1; ++vi_1){
 		if(myNet.m_net_graph[*vi_1].is_input) continue; //ignore input neurons
-		cout << *vi_1 << "||	";
+		std::cout << *vi_1 << "||	";
 		parent_checker checker(*vi_1, myNet_modified.m_net_graph);
 		for (boost::tie(vi_2, vi_end_2) = boost::vertices(myNet.m_net_graph); vi_2 != vi_end_2; ++vi_2){
 			if(checker.is_parent(*vi_2)) continue; //if vi_2 is ancestor of vi_1, do not any calculations
 			if(boost::edge(*vi_2, *vi_1, myNet.m_net_graph).second) continue; //if edge already exists, do nothing
 			double correlation = container_correlation(m_gradient[*vi_1],out_values[*vi_2]);
 			if(fabs(correlation) > 0){
-				cout << *vi_2 << "	" << print_to_width(correlation) << "|";
+				std::cout << *vi_2 << "	" << print_to_width(correlation) << "|";
 				edge_to_add.push_back(potential_edge{*vi_2, *vi_1, correlation});
 				
 			}
 		}
-		cout << endl;
+		std::cout << std::endl;
 	}
 	
 	std::sort(edge_to_add.begin(), edge_to_add.end(), [](potential_edge a, potential_edge b) {
@@ -342,7 +341,7 @@ int main(int argc, char* argv[])
 			SinapsP sinaps_new;
             sinaps_new.age=500;
             sinaps_new.m_weight=0;
-			cout << "Adding edge: from " << myNet.m_net_graph[edge.input].tag << "	to " << myNet.m_net_graph[edge.output].tag << endl;;
+			std::cout << "Adding edge: from " << myNet.m_net_graph[edge.input].tag << "	to " << myNet.m_net_graph[edge.output].tag << std::endl;
 			boost::add_edge(edge.input, edge.output, sinaps_new, myNet_modified.m_net_graph);
 			edges_to_insert--;
 		}
@@ -372,7 +371,7 @@ int main(int argc, char* argv[])
             for (int i2 = i1 - 1; i2 >= 0; i2--){
                 auto v_i2 = myNet_modified.topo_sorted[i2];
                 if(checker.is_parent(v_i2)) continue;
-                vector<double> vec2_mult_vec3={};
+                std::vector<double> vec2_mult_vec3={};
                 for(int n=0; n < out_values[v_i1].size(); n++)
                     vec2_mult_vec3.push_back(out_values[v_i1][n]*out_values[v_i2][n]);
                 double correlation_3 = container_correlation(m_gradient[v_out], vec2_mult_vec3);
@@ -413,8 +412,8 @@ int main(int argc, char* argv[])
     std::cout << "sorting complete\n" << std::endl;
 
     for(auto neuron: neurons_to_add)
-        cout << myNet.m_net_graph[neuron.input1].tag << "	"  << myNet.m_net_graph[neuron.input2].tag << "	" <<
-            myNet.m_net_graph[neuron.output].tag <<  "	"<< neuron.correlation << endl;
+        std::cout << myNet.m_net_graph[neuron.input1].tag << "	"  << myNet.m_net_graph[neuron.input2].tag << "	" <<
+            myNet.m_net_graph[neuron.output].tag <<  "	"<< neuron.correlation << std::endl;
 
     int neurons_inserted = 0;
     for(int n=0; (neurons_inserted < -neurons_to_insert) && (n<neurons_to_add.size()) ; n++){
@@ -430,7 +429,7 @@ int main(int argc, char* argv[])
         sinaps_in2.m_weight=1e-2;
         sinaps_out.m_weight=1e-2;
         auto neuron = neurons_to_add[n];
-        cout << "Creating neuron with tag " << neuron_new.tag << "	from " << myNet.m_net_graph[neuron.input1].tag << " and " << myNet.m_net_graph[neuron.input2].tag << " to " << myNet.m_net_graph[neuron.output].tag << endl;
+        std::cout << "Creating neuron with tag " << neuron_new.tag << "	from " << myNet.m_net_graph[neuron.input1].tag << " and " << myNet.m_net_graph[neuron.input2].tag << " to " << myNet.m_net_graph[neuron.output].tag << std::endl;
         auto vertex_new = boost::add_vertex(neuron_new, myNet_modified_temp.m_net_graph);
         boost::add_edge(neuron.input1, vertex_new, sinaps_in1, myNet_modified_temp.m_net_graph);
         boost::add_edge(neuron.input2, vertex_new, sinaps_in2, myNet_modified_temp.m_net_graph);
@@ -445,7 +444,7 @@ int main(int argc, char* argv[])
             continue;
         }
         //OK, if exception is not catched, graph is DAG, and we actually add this neuron
-        cout << "Actually add neuron" << endl;
+        std::cout << "Actually add neuron" << std::endl;
         myNet_modified = myNet_modified_temp;
         neurons_inserted++;
     }
@@ -464,7 +463,7 @@ int main(int argc, char* argv[])
 			boost::tie(ei, ei_end) = in_edges(*vi, myNet_modified.m_net_graph);
 			boost::tie(eo, eo_end) = out_edges(*vi, myNet_modified.m_net_graph);
 			if((ei == ei_end) || (eo == eo_end)){
-				cout << "Removing vertex " << *vi << "	with tag " << myNet_modified.m_net_graph[*vi].tag << endl;
+				std::cout << "Removing vertex " << *vi << "	with tag " << myNet_modified.m_net_graph[*vi].tag << std::endl;
 				boost::clear_vertex(*vi, myNet_modified.m_net_graph);
 				boost::remove_vertex(*vi, myNet_modified.m_net_graph);
 				//1) after clear - some output connections for over neurons can be deleted
@@ -480,14 +479,14 @@ int main(int argc, char* argv[])
 
     //try to estimate optimal edge values by training procedure with old edges frozen
 
-    vector<boost::graph_traits<Graph>::edge_iterator> new_edges;
+    std::vector<boost::graph_traits<Graph>::edge_iterator> new_edges;
     //froze old edges by rate=0 and from list of new edges
     for (boost::tie(ei, ei_end) = boost::edges(myNet.m_net_graph); ei != ei_end; ++ei){
         auto age = myNet.m_net_graph[*ei].age;
         //myNet.m_net_graph[*ei].rate = 0.02*exp(-0.0002*myNet.m_net_graph[*ei].age);
-        cout << "Edge1 " << *ei << " " << myNet.m_net_graph[*ei].age << " " << myNet.m_net_graph[*ei].m_weight << endl;
+        std::cout << "Edge1 " << *ei << " " << myNet.m_net_graph[*ei].age << " " << myNet.m_net_graph[*ei].m_weight << std::endl;
         if(age<1) {
-            cout << "New edge" << *ei << endl;
+            std::cout << "New edge" << *ei << std::endl;
                     new_edges.push_back(ei);
                     myNet.m_net_graph[*ei].rate = 0.1;
                 }
@@ -503,7 +502,7 @@ int main(int argc, char* argv[])
         for(auto edge_iter: new_edges){
             auto age = myNet.m_net_graph[*edge_iter].age++;
             myNet.m_net_graph[*edge_iter].rate = 50.0/(age+1000.0);
-            cout << n << " " << *edge_iter << myNet.m_net_graph[*edge_iter].m_weight << endl;
+            std::cout << n << " " << *edge_iter << myNet.m_net_graph[*edge_iter].m_weight << std::endl;
         }
 
         for (auto data : input_output_vals){

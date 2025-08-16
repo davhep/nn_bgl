@@ -1,0 +1,18 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/nn_bglTargets.cmake")
+
+# Check if all required components are available
+check_required_components(nn_bgl)
+
+# Set package variables
+set(nn_bgl_VERSION "@PROJECT_VERSION@")
+set(nn_bgl_DESCRIPTION "@PROJECT_DESCRIPTION@")
+
+# Find dependencies
+find_package(Boost REQUIRED COMPONENTS serialization program_options)
+find_package(Threads REQUIRED)
+
+# Export variables for users
+set(nn_bgl_Boost_LIBRARIES ${Boost_LIBRARIES})
+set(nn_bgl_Threads_LIBRARIES ${CMAKE_THREAD_LIBS_INIT})

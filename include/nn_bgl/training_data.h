@@ -1,16 +1,30 @@
+#pragma once
+
 #include <vector>
-#include <iostream>
+#include <string>
 
-using namespace std;
-
-class TrainingData{
+class TrainingData {
 public:
-	virtual bool isEof(void)=0;
-	virtual void getNextInputs(vector<double> &inputVals)=0;
-	virtual void getTargetOutputs(vector<double> &targetOutputVals)=0;
-	void get(vector<double> &inputVals, vector<double> &targetOutputVals){
-		getNextInputs(inputVals);
-		getTargetOutputs(targetOutputVals);
-	};
-    virtual void reset(void)=0; 
+    virtual ~TrainingData() = default;
+    
+    // Core interface methods
+    [[nodiscard]] virtual bool isEof() = 0;
+    virtual void getNextInputs(std::vector<double>& inputVals) = 0;
+    virtual void getTargetOutputs(std::vector<double>& targetOutputVals) = 0;
+    virtual void reset() = 0;
+    
+    // Utility methods
+    [[nodiscard]] virtual std::string getStatus() const { return "TrainingData base class"; }
+    
+protected:
+    // Protected constructor for base class
+    TrainingData() = default;
+    
+    // Copy constructor and assignment operator
+    TrainingData(const TrainingData&) = default;
+    TrainingData& operator=(const TrainingData&) = default;
+    
+    // Move constructor and assignment operator
+    TrainingData(TrainingData&&) noexcept = default;
+    TrainingData& operator=(TrainingData&&) noexcept = default;
 };

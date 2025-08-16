@@ -19,7 +19,7 @@ double Net::transferFunctionDerivative(double x)
 	//return cos(x*3.1415/2);
 }
 
-void Net::dump(std::string label)
+void Net::dump(std::string /* label */)
 {/*
 	cerr <<label;
 	for(unsigned layerNum = 0; layerNum < m_layers.size(); ++layerNum){
@@ -59,7 +59,7 @@ void Net::backProp(const std::vector<double> &targetVals, bool update_weights)
 	}
 	}
 	
-	m_error /= output_layer.size(); // get average error squared
+	m_error /= static_cast<double>(output_layer.size()); // get average error squared
 	m_error = sqrt(m_error); // RMS
 
 	// Implement a recent average measurement:
@@ -76,7 +76,7 @@ void Net::backProp(const std::vector<double> &targetVals, bool update_weights)
         }
 
         //OK, at first stage - update neuron deltas and gradients
-	   	for (int i = topo_sorted.size() - 1; i >= 0; i--){
+	   	for (size_t i = topo_sorted.size() - 1; i != static_cast<size_t>(-1); --i){
 			//reverse topological order
 			auto neuron = &m_net_graph[topo_sorted[i]];
             if (debug_low) cerr <<"Update gradients on outputs for neuron " << neuron->tag << endl;
@@ -92,36 +92,38 @@ void Net::backProp(const std::vector<double> &targetVals, bool update_weights)
 				typename boost::graph_traits<Graph>::out_edge_iterator ei, ei_end;
 				if (debug_low) cerr <<"Update hidden layer neuron" << endl;
 			    for (boost::tie(ei, ei_end) = out_edges(topo_sorted[i], m_net_graph); ei != ei_end; ++ei){
-					auto source = boost::source ( *ei, m_net_graph);
-					auto target = boost::target ( *ei, m_net_graph );
-					delta += m_net_graph[*ei].m_weight * m_net_graph[target].m_gradient;
+									// auto source = boost::source ( *ei, m_net_graph); // Unused variable
+				auto target = boost::target ( *ei, m_net_graph );
+				delta += m_net_graph[*ei].m_weight * m_net_graph[target].m_gradient;
 					if (debug_low) cerr <<"target neuron " << m_net_graph[target].tag << " sm_net_graph[*ei].m_weight =	" << m_net_graph[*ei].m_weight  << "	m_net_graph[target].m_gradient = " << m_net_graph[target].m_gradient << endl;
 				}
 			}
 			
 			neuron->m_gradient = delta * transferFunctionDerivative(neuron->m_outputVal);
-			if (debug_low) cerr <<"neuron->m_outputVal=	" << neuron->m_outputVal << endl;
-			if (debug_low) cerr <<"delta=	" << delta  << "	transferFunctionDerivative(neuron->m_outputVal)= " << transferFunctionDerivative(neuron->m_outputVal) << endl;
-			if (debug_low) cerr <<"neuron->tag=	" << neuron->tag  << "	neuron->m_gradient= " << neuron->m_gradient << endl;			
+			if (debug_low) {
+				cerr <<"neuron->m_outputVal=	" << neuron->m_outputVal << endl;
+				cerr <<"delta=	" << delta  << "	transferFunctionDerivative(neuron->m_outputVal)= " << transferFunctionDerivative(neuron->m_outputVal) << endl;
+				cerr <<"neuron->tag=	" << neuron->tag  << "	neuron->m_gradient= " << neuron->m_gradient << endl;
+			}			
 	     }
    
 
         //OK, at second stage - update on edge weights
 
 
-         for (int i = topo_sorted.size() - 1; i >= 0; i--){
+         for (size_t i = topo_sorted.size() - 1; i != static_cast<size_t>(-1); --i){
             //reverse topological order
-            auto neuron = &m_net_graph[topo_sorted[i]];
+            // auto neuron = &m_net_graph[topo_sorted[i]]; // Unused variable
 
             typename boost::graph_traits<Graph>::in_edge_iterator ei, ei_end;
             for (boost::tie(ei, ei_end) = in_edges(topo_sorted[i], m_net_graph); ei != ei_end; ++ei){
-				auto source = boost::source ( *ei, m_net_graph);
-				auto target = boost::target ( *ei, m_net_graph );
+				// auto source = boost::source ( *ei, m_net_graph); // Unused variable
+				// auto target = boost::target ( *ei, m_net_graph ); // Unused variable
                 //m_net_graph[*ei].m_delta_weight = m_net_graph[*ei].rate * m_net_graph[source].m_outputVal * m_net_graph[target].m_gradient;
-                m_net_graph[*ei].m_delta_weight = m_net_graph[*ei].rate * m_net_graph[source].m_outputVal * m_net_graph[target].m_gradient;
+                m_net_graph[*ei].m_delta_weight = m_net_graph[*ei].rate * m_net_graph[boost::source(*ei, m_net_graph)].m_outputVal * m_net_graph[boost::target(*ei, m_net_graph)].m_gradient;
 
 				if (update_weights) m_net_graph[*ei].m_weight += m_net_graph[*ei].m_delta_weight;
-				if (debug_low) cerr <<"Wij " << m_net_graph[source].tag << "	to " << m_net_graph[target].tag << " updated for " << m_net_graph[*ei].m_delta_weight << endl;
+				if (debug_low) cerr <<"Wij " << m_net_graph[boost::source(*ei, m_net_graph)].tag << "	to " << m_net_graph[boost::target(*ei, m_net_graph)].tag << " updated for " << m_net_graph[*ei].m_delta_weight << endl;
 			}
         }
 }
@@ -132,7 +134,7 @@ void Net::feedForward(const vector<double> &inputVals)
 {
        assert(input_layer.size() == inputVals.size());
 	
-	for (int i = 0; i < topo_sorted.size(); i++){
+	for (size_t i = 0; i < topo_sorted.size(); i++){
 		auto vertex = topo_sorted[i];
 		auto neuron = &m_net_graph[vertex];
 		if(debug_low) cerr <<"Processing neuron " << neuron->tag << endl;
@@ -146,10 +148,10 @@ void Net::feedForward(const vector<double> &inputVals)
 			neuron->m_input_value = 0;
 		    typename boost::graph_traits<Graph>::in_edge_iterator ei, ei_end;
 		    for (boost::tie(ei, ei_end) = in_edges(vertex, m_net_graph); ei != ei_end; ++ei) {
-				auto source = boost::source ( *ei, m_net_graph);
-				auto target = boost::target ( *ei, m_net_graph );
-				neuron->m_input_value += m_net_graph[*ei].m_weight * m_net_graph[source].m_outputVal;
-				if(debug_low) cerr <<"m_net_graph[*ei].m_weight = " << m_net_graph[*ei].m_weight << " m_net_graph[source].m_outputVal= " <<  m_net_graph[source].m_outputVal << " neuron->m_input_value= " << neuron->m_input_value << endl;
+				// auto source = boost::source ( *ei, m_net_graph); // Unused variable
+				// auto target = boost::target ( *ei, m_net_graph ); // Unused variable
+				neuron->m_input_value += m_net_graph[*ei].m_weight * m_net_graph[boost::source(*ei, m_net_graph)].m_outputVal;
+				if(debug_low) cerr <<"m_net_graph[*ei].m_weight = " << m_net_graph[*ei].m_weight << " m_net_graph[boost::source(*ei, m_net_graph)].m_outputVal= " <<  m_net_graph[boost::source(*ei, m_net_graph)].m_outputVal << " neuron->m_input_value= " << neuron->m_input_value << endl;
 				}
 			neuron->m_outputVal = transferFunction(neuron->m_input_value);
 		}
@@ -164,7 +166,7 @@ void Net::on_topology_update(){
 	topo_sorted.clear();
 	boost::topological_sort(m_net_graph, std::front_inserter(topo_sorted));
 	cerr <<"A topological ordering: ";
-    for (int i = 0; i < topo_sorted.size(); i++) cerr <<m_net_graph[topo_sorted[i]].tag  << " ";
+    for (size_t i = 0; i < topo_sorted.size(); i++) cerr <<m_net_graph[topo_sorted[i]].tag  << " ";
     cerr <<endl;
     
     //because of re-numbering vertices after remove vertices, we have to update output/input lists
@@ -203,7 +205,7 @@ Net::Net(const vector<unsigned> &topology, net_type type_of_network)
 						neuron.is_output = true;
 						neuron.output_signal = neuronNum;
 					}
-					auto vertex_new = boost::add_vertex(neuron, m_net_graph);
+					boost::add_vertex(neuron, m_net_graph);
 
 					for(unsigned neuronNum_prev = 0; neuronNum_prev < numInputs; neuronNum_prev++){
 						SinapsP sinaps;
@@ -215,14 +217,14 @@ Net::Net(const vector<unsigned> &topology, net_type type_of_network)
 			}
 		break;
 		case(water_fall):
-			unsigned int total_neurons = std::accumulate(topology.begin(), topology.end(), 0);
+			unsigned int total_neurons = std::accumulate(topology.begin(), topology.end(), 0U);
 			cerr <<"Total neurons: " << total_neurons << endl;
 			std::vector<unsigned int> neuron_in;
-			for(int neuron_num = 0; neuron_num < total_neurons; neuron_num++){
+			for(unsigned int neuron_num = 0; neuron_num < total_neurons; neuron_num++){
 					cerr <<"generating neuron " << neuron_num << endl;
 					NeuronP neuron;
 					neuron.tag = neuron_num;
-					auto vertex_new = boost::add_vertex(neuron, m_net_graph);
+					boost::add_vertex(neuron, m_net_graph);
 					tag_max++;
 					if(neuron_num < topology[0]) //if we are in input layer, storage ouput tags
 						neuron.input_signal = neuron_num;
@@ -232,7 +234,7 @@ Net::Net(const vector<unsigned> &topology, net_type type_of_network)
 						unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 						std::shuffle(neuron_in.begin(), neuron_in.end(), std::default_random_engine(seed));
 						int n_max=4;//how many neurons output connect to this neuron input
-						for(int n=0;(n< n_max) && (n<neuron_num);n++){
+						for(unsigned int n=0;(n< n_max) && (n<neuron_num);n++){
 							unsigned int input_neuron = neuron_in[n];
 							cerr <<"input neuron= " << input_neuron << endl;
 							SinapsP sinaps;
@@ -245,8 +247,8 @@ Net::Net(const vector<unsigned> &topology, net_type type_of_network)
 			//ok, we have to check if some neuron have no outputs, and connect them to some outer neurons
 			Graph::vertex_iterator v, vend;
 			for (boost::tie(v, vend) = vertices(m_net_graph); v != vend; ++v){
-				auto outer_neuron = output_layer.find(*v);
-				if(outer_neuron != output_layer.end()) continue;
+				auto outer_neuron_check = output_layer.find(*v);
+				if(outer_neuron_check != output_layer.end()) continue;
 				auto out_edges = boost::out_edges(*v, m_net_graph);
 		        if(out_edges.first == out_edges.second){
 					for(auto outer_neuron: output_layer){

@@ -155,7 +155,7 @@ int main(int argc, char* argv[])
 	
 	vector<double> inputVals, targetVals, resultVals;	
 	int trainingPass = 0;
-	int epochs_max=1000;
+	// int epochs_max=1000; // Unused variable
 
 	
 	ofstream data_dump("model_vs_practice.txt");
@@ -167,7 +167,7 @@ int main(int argc, char* argv[])
 	std::map<vertex_descriptor, vector<double>> out_values, m_gradient;
 	
 	double epoch_error = 0;
-	double epoch_average_error = 0;
+	    // double epoch_average_error = 0; // Unused variable
 	unsigned int epoch_num_in = 0;
 
     vector<std::pair<vector<double>, vector<double>>> input_output_vals;
@@ -242,7 +242,7 @@ int main(int argc, char* argv[])
     cout << "Averaged error on non modified = " << epoch_error/epoch_num_in << " ndata= " << epoch_num_in << endl;
 
     
-	std::vector<edge_descriptor> egdes_to_remove;
+	// std::vector<edge_descriptor> egdes_to_remove; // Unused variable
 
 	//let`s iterate over synapses
 	
@@ -297,7 +297,7 @@ int main(int argc, char* argv[])
 			myNet_modified.m_net_graph[neuron.output].tag <<  "	"<< neuron.correlation << endl;
 	
     int neurons_to_insert = 1;
-    for(int n=0; n < -neurons_to_insert; n++){
+    for(int n=0; n < neurons_to_insert; n++){
 		NeuronP neuron_new;
 		neuron_new.tag = ++myNet_modified.tag_max;
 		SinapsP sinaps_in1, sinaps_in2, sinaps_out;
@@ -359,7 +359,7 @@ int main(int argc, char* argv[])
 
     neurons_to_add.clear();
 
-    int output_is_higer = myNet.topo_sorted.size() - 1;
+    // int output_is_higer = myNet.topo_sorted.size() - 1; // Unused variable
     // output neuron must be higher, than output_is_higer at given i1
     // the idea is if at given i1 output_neuron output_is_higer is child of i1, for all next i1 neuron will be child of output_is_higer too, so we can exclude i3 < output_is_higer
 
@@ -441,7 +441,7 @@ int main(int argc, char* argv[])
         catch (...)
         {
             std::cout << "Error cycling on graph detected !!!" << std::endl;
-            saveModel(myNet_modified_temp, final_result_serialized.c_str(), "updated_model_DAG.dot");
+            saveModel(myNet_modified_temp, final_result_serialized, "updated_model_DAG.dot");
             continue;
         }
         //OK, if exception is not catched, graph is DAG, and we actually add this neuron
@@ -500,10 +500,10 @@ int main(int argc, char* argv[])
     //iterate some epochs on data
     for(int n=0;n<100;n++){
 
-        for(auto ei: new_edges){
-            auto age = myNet.m_net_graph[*ei].age++;
-            myNet.m_net_graph[*ei].rate = 50.0/(age+1000.0);
-            cout << n << " " << *ei << myNet.m_net_graph[*ei].m_weight << endl;
+        for(auto edge_iter: new_edges){
+            auto age = myNet.m_net_graph[*edge_iter].age++;
+            myNet.m_net_graph[*edge_iter].rate = 50.0/(age+1000.0);
+            cout << n << " " << *edge_iter << myNet.m_net_graph[*edge_iter].m_weight << endl;
         }
 
         for (auto data : input_output_vals){
@@ -512,5 +512,5 @@ int main(int argc, char* argv[])
             myNet.backProp(data.second, true); //if last epoch, do not update weight, just calculate error
         }
     }
-	saveModel(myNet_modified, final_result_serialized.c_str(), "updated_model.dot");
+	saveModel(myNet_modified, final_result_serialized, "updated_model.dot");
 }

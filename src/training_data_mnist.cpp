@@ -31,7 +31,7 @@ void TrainingDataMnist::getNextInputs(vector<double> &inputVals)
     inputVals.clear();
 	
 	uint8_t buffer [IMAGE_SIZE];
-	images.read((char*) buffer, IMAGE_SIZE);
+	images.read(reinterpret_cast<char*>(buffer), IMAGE_SIZE);
 
 	for (int i = 0; i < IMAGE_SIZE; i++)
 	{

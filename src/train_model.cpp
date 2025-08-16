@@ -33,7 +33,7 @@ void showVectorVals(string label, vector<num_type> &v)
 	cout << endl;
 }
 
-void saveModel(Net myNet, std::string serialized_file,  std::string dot_file_name){
+void saveModel(Net myNet, const std::string& serialized_file, const std::string& dot_file_name){
 	myNet.save(serialized_file);
 	ofstream dot_file(dot_file_name);
 	boost::dynamic_properties dp;
@@ -117,8 +117,8 @@ int main(int argc, char* argv[])
     vector<std::pair<vector<double>, vector<double>>> input_output_vals;
     vector<std::pair<vector<double>, vector<double>>> input_output_validate_vals;
     vector<double> resultVals;
-    trainData.ReadAllFromFile(input_output_vals, myNet.input_layer.size(), myNet.output_layer.size());
-    validateData.ReadAllFromFile(input_output_validate_vals, myNet.input_layer.size(), myNet.output_layer.size());
+    trainData.ReadAllFromFile(input_output_vals, static_cast<int>(myNet.input_layer.size()), static_cast<int>(myNet.output_layer.size()));
+    validateData.ReadAllFromFile(input_output_validate_vals, static_cast<int>(myNet.input_layer.size()), static_cast<int>(myNet.output_layer.size()));
 
     int trainingPass = 0;
 	
@@ -142,7 +142,7 @@ int main(int argc, char* argv[])
         for (boost::tie(ei, ei_end) = boost::edges(myNet.m_net_graph); ei != ei_end; ++ei){
             auto age = myNet.m_net_graph[*ei].age++;
             //myNet.m_net_graph[*ei].rate = 0.02*exp(-0.0002*myNet.m_net_graph[*ei].age);
-            myNet.m_net_graph[*ei].rate = 50.0*learn_rate/((age+1000.0));
+            myNet.m_net_graph[*ei].rate = 50.0*learn_rate/((static_cast<double>(age)+1000.0));
             auto source = boost::source ( *ei, myNet.m_net_graph);
             int  source_tag = myNet.m_net_graph[source].tag;
             auto target = boost::target ( *ei, myNet.m_net_graph);
@@ -192,7 +192,7 @@ int main(int argc, char* argv[])
                 epoch_num_in++;
                 epoch_error += myNet.getRecentAverageError();
             }
-            epoch_average_error = epoch_error/epoch_num_in;
+            // epoch_average_error = epoch_error/epoch_num_in; // This calculation is redundant
 
 			cout << "At epoch " << myNet.trainingPass << " Net recent average error: " << epoch_average_error;
 			epoch_error = 0;

@@ -1,4 +1,4 @@
-#include <./nn_bgl.h>
+#include <nn_bgl/nn_bgl.h>
 
 // ****************** class Net ******************
 

@@ -1,4 +1,4 @@
-#include <training_data.h>
+#include <nn_bgl/training_data.h>
 
 #include <vector>
 #include <iostream>
@@ -14,15 +14,17 @@
 #include <fstream>
 
 #include <iterator>
+#include <stdint.h>
 
-class TrainingDataHuman : public TrainingData {
+class TrainingDataMnist : public TrainingData {
 public:
 	bool isEof(void);
 	void getNextInputs(vector<double> &inputVals);
 	void getTargetOutputs(vector<double> &targetOutputVals);
 	void reset(void); 
-	void InitFile(const string filename);
-    void ReadAllFromFile(vector<std::pair<vector<double>, vector<double>>> &input_output_vals, int input_size, int output_size);
+	void InitFile(const string filename_images, const string filename_labels);
+	unsigned int index_max=60000, index=0;
 private:
-	ifstream m_trainingDataFile;
+	std::ifstream images;
+	std::ifstream labels;
 };

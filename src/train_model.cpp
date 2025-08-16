@@ -13,8 +13,8 @@
 
 #include <iterator>
 
-#include <./nn_bgl.h>
-#include <./training_data_human.h>
+#include <nn_bgl/nn_bgl.h>
+#include <nn_bgl/training_data_human.h>
 
 #include <boost/program_options.hpp>
 #include <unistd.h>

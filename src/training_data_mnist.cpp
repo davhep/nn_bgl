@@ -1,4 +1,4 @@
-#include<./training_data_mnist.h>
+#include <nn_bgl/training_data_mnist.h>
 
 #ifndef IMAGE_SIZE
 #define IMAGE_SIZE 784

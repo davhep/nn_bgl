@@ -1,4 +1,4 @@
-#include<./training_data_human.h>
+#include <nn_bgl/training_data_human.h>
 
 using namespace std;
 
